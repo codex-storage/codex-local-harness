@@ -12,3 +12,10 @@ clh_output_folder() {
 echoerr() {
   echo "$@" >&2
 }
+
+await() {
+  local pid=$1
+  while kill -0 "$pid"; do
+    sleep 0.1
+  done
+}

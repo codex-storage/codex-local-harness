@@ -33,13 +33,11 @@ clh_start_process_monitor() {
   (
     shutdown=false
     while ! $shutdown; do
-      for pid_file in "${_procmon_output}"/*.pid; do
-        [[ -f "${pid_file}" ]] || continue # null glob
-        base_name=$(basename "${pid_file}")
-        pid=${base_name%.pid}
+      clh_get_tracked_pids
+      for pid in "${result[@]}"; do
         if ! kill -0 "${pid}"; then
           echoerr "[procmon] ${pid} is dead"
-          rm "${pid_file}"
+          rm "${_procmon_output}/${pid}.pid"
         fi
         sleep 1
       done
@@ -60,6 +58,7 @@ clh_track_last_background_job() {
 clh_get_tracked_pids() {
   result=()
   for pid_file in "${_procmon_output}"/*.pid; do
+    [[ -f "${pid_file}" ]] || continue # null glob
     base_name=$(basename "${pid_file}")
     pid=${base_name%.pid}
     result+=("${pid}")
@@ -80,7 +79,7 @@ clh_stop_process_monitor() {
   if [ "$1" = "monitor_only" ]; then
     echoerr "[procmon] stop monitor only. Children will be left behind."
     kill -s TERM "$_procmon_pid"
-    wait "$_procmon_pid"
+    await "$_procmon_pid"
     return 0
   else
     echoerr "[procmon] stop process group. This will halt the script."
