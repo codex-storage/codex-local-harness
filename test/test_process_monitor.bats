@@ -9,9 +9,15 @@ setup() {
 }
 
 @test "should not start process monitor twice" {
+  assert_equal $(clh_monitor_state) "halted"
+
   assert clh_start_process_monitor
+  assert_equal $(clh_monitor_state) "running"
+
   refute clh_start_process_monitor
-  assert clh_stop_process_monitor "monitor_only"
+
+  assert clh_stop_process_monitor
+  assert_equal $(clh_monitor_state) "halted"
 }
 
 @test "should not stop the process monitor if it wasn't started" {
@@ -19,24 +25,25 @@ setup() {
 }
 
 @test "should keep track of process IDs" {
-  echo "hi"
   assert clh_start_process_monitor
 
   clh_get_tracked_pids
   assert [ ${#result[@]} -eq 0 ]
 
   (
-    while true; do
+    while [ ! -f "${_procmon_output}/sync" ]; do
       sleep 0.1
     done
+    clh_exit 0
   ) &
   clh_track_last_background_job
   p1=$!
 
   (
-    while true; do
+    while [ ! -f "${_procmon_output}/sync" ]; do
       sleep 0.1
     done
+    clh_exit 0
   ) &
   clh_track_last_background_job
   p2=$!
@@ -44,22 +51,49 @@ setup() {
   clh_get_tracked_pids
   assert [ ${#result[@]} -eq 2 ]
 
-  kill -s TERM "$p1"
-  kill -s TERM "$p2"
+  touch "${_procmon_output}/sync"
 
-  echo "Kill issued" > killissued
-
-  # This will hang the bats runner for some reason.
   await "$p1"
   await "$p2"
 
   # This should be more than enough for the process monitor to
   # catch the exits. The alternative would be implementing temporal
   # predicates.
-  sleep 3
+  sleep 1
 
   clh_get_tracked_pids
   assert [ ${#result[@]} -eq 0 ]
 
-  clh_stop_process_monitor "monitor_only"
+  clh_stop_process_monitor
+}
+
+@test "should stop the monitor and all other processes if one process fails" {
+  assert clh_start_process_monitor
+
+  (
+    while [ ! -f "${_procmon_output}/sync" ]; do
+      sleep 0.1
+    done
+    clh_exit 1
+  ) &
+  clh_track_last_background_job
+  p1=$!
+
+  (
+    while [ ! -f "${_procmon_output}/sync" ]; do
+      sleep 1
+    done
+    clh_exit 0
+  ) &
+  clh_track_last_background_job
+  p2=$!
+
+  touch "${_procmon_output}/sync"
+
+  await "$p1"
+  await "$p2"
+
+  sleep 1
+
+  assert_equal $(clh_monitor_state) "halted_process_failure"
 }
