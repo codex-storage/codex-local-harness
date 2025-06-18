@@ -8,3 +8,5 @@ source "${LIB_SRC}/config.bash"
 source "${LIB_SRC}/utils.bash"
 # shellcheck source=./src/procmon.bash
 source "${LIB_SRC}/procmon.bash"
+# shellcheck source=./src/codex.bash
+source "${LIB_SRC}/codex.bash"
