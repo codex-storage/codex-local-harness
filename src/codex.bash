@@ -13,23 +13,47 @@ _cdx_binary="${CLH_CODEX_BINARY:-codex}"
 
 _cdx_base_api_port=8080
 _cdx_base_disc_port=8190
+_cdx_base_metrics_port=8290
 
 cdx_cmdline() {
   local api_port\
     disc_port\
-    node_index="$1"\
-    cdx_cmd="${_cdx_binary} --nat:none"\
-    spr="$2"
+    metrics_port\
+    spr\
+    node_index\
+    cdx_cmd="${_cdx_binary} --nat:none"
+
+  node_index="$1"
+  shift
+
+  api_port=$((_cdx_base_api_port + node_index))
+  disc_port=$((_cdx_base_disc_port + node_index))
+  metrics_port=$((_cdx_base_metrics_port + node_index))
+
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --bootstrap-node)
+        shift
+        spr="$1"
+        cdx_cmd="${cdx_cmd} --bootstrap-node=$spr"
+        ;;
+      --metrics)
+        cdx_cmd="${cdx_cmd} --metrics --metrics-port=${metrics_port} --metrics-address=0.0.0.0"
+        ;;
+      *)
+        echoerr "Error: unknown option $1"
+        return 1
+        ;;
+    esac
+    shift
+  done
 
   if [[ "$node_index" -gt 0 && -z "$spr" ]]; then
     echoerr "Error: SPR is required for node $node_index"
     return 1
   fi
 
-  api_port=$((_cdx_base_api_port + node_index))
-  disc_port=$((_cdx_base_disc_port + node_index))
-
   echo "${cdx_cmd}"\
-" --log-file=${_cdx_output}/logs/codex-${node_index}.log --data-dir=${_cdx_output}/data/codex-${node_index}"\
+" --log-file=${_cdx_logs}/codex-${node_index}.log --data-dir=${_cdx_data}/codex-${node_index}"\
 " --api-port=${api_port} --disc-port=${disc_port} --loglevel=INFO"
 }
