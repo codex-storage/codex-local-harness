@@ -2,7 +2,7 @@
 
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
-# shellcheck source=./config.bash
+# shellcheck source=./src/config.bash
 source "${LIB_SRC}/config.bash"
 
 clh_output_folder() {
