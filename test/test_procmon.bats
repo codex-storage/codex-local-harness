@@ -1,9 +1,6 @@
 setup() {
-  bats_require_minimum_version 1.12.0
-
-  export LIB_SRC="${BATS_TEST_DIRNAME}/../src"
-  load "${BATS_TEST_DIRNAME}/test_helper/bats-support/load.bash"
-  load "${BATS_TEST_DIRNAME}/test_helper/bats-assert/load.bash"
+  load test_helper/common_setup
+  common_setup
 
   source "${LIB_SRC}/procmon.bash"
 }
