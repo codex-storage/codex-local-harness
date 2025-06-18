@@ -15,6 +15,8 @@ _cdx_base_api_port=8080
 _cdx_base_disc_port=8190
 _cdx_base_metrics_port=8290
 
+_cdx_node_start_timeout=30
+
 cdx_cmdline() {
   local api_port\
     disc_port\
@@ -56,4 +58,51 @@ cdx_cmdline() {
   echo "${cdx_cmd}"\
 " --log-file=${_cdx_logs}/codex-${node_index}.log --data-dir=${_cdx_data}/codex-${node_index}"\
 " --api-port=${api_port} --disc-port=${disc_port} --loglevel=INFO"
+}
+
+cdx_get_spr() {
+  local node_index="$1" api_port spr
+  api_port=$((_cdx_base_api_port + node_index))
+
+  spr=$(curl --silent --fail "http://localhost:${api_port}/api/codex/v1/debug/info" | grep -oe 'spr:[^"]\+')
+  if [[ -z "$spr" ]]; then
+    echoerr "Error: unable to get SPR for node $node_index"
+    return 1
+  fi
+
+  echo "${spr}"
+}
+
+cdx_launch_node() {
+  _check_codex_binary
+
+  local codex_cmd
+  codex_cmd=$(cdx_cmdline "$@")
+
+  (
+    $codex_cmd
+    pm_job_exit $?
+  )&
+  pm_track_last_job
+
+  cdx_ensure_ready "$@"
+}
+
+cdx_ensure_ready() {
+  local node_index="$1" timeout=${2:-$_cdx_node_start_timeout} start now
+  start=$(date +%s)
+  while true; do
+    if cdx_get_spr "$node_index"; then
+      echoerr "Codex node $node_index is ready."
+      return 0
+    fi
+
+    now=$(date +%s)
+    if (( now - start > timeout )); then
+      echoerr "Codex node $node_index did not start within ${timeout} seconds."
+      return 1
+    fi
+
+    sleep 0.2
+  done
 }

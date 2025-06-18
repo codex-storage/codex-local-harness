@@ -4,4 +4,10 @@ common_setup() {
   load test_helper/bats-assert/load
 
   export LIB_SRC="${BATS_TEST_DIRNAME}/../src"
+  export CODEX_BINARY="${BATS_TEST_DIRNAME}/codex/build/codex"
+
+  if [ ! -f "$CODEX_BINARY" ]; then
+    echo "Codex binary not found at $CODEX_BINARY"
+    exit 1
+  fi
 }
