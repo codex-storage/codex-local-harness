@@ -29,4 +29,4 @@ jobs:
         tags: clh:test
 
     - name: Run Tests
-      run: docker run -it --rm clh:test ./test/bats/bin/bats test/
+      run: docker run -v --rm clh:test ./test/bats/bin/bats test/
