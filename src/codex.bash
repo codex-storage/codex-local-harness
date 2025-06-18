@@ -55,6 +55,7 @@ cdx_cmdline() {
     return 1
   fi
 
+  # shellcheck disable=SC2140
   echo "${cdx_cmd}"\
 " --log-file=${_cdx_logs}/codex-${node_index}.log --data-dir=${_cdx_data}/codex-${node_index}"\
 " --api-port=${api_port} --disc-port=${disc_port} --loglevel=INFO"
@@ -89,16 +90,14 @@ cdx_launch_node() {
 }
 
 cdx_ensure_ready() {
-  local node_index="$1" timeout=${2:-$_cdx_node_start_timeout} start now
-  start=$(date +%s)
+  local node_index="$1" timeout=${2:-$_cdx_node_start_timeout} start="${SECONDS}"
   while true; do
     if cdx_get_spr "$node_index"; then
       echoerr "Codex node $node_index is ready."
       return 0
     fi
 
-    now=$(date +%s)
-    if (( now - start > timeout )); then
+    if (( SECONDS - start > timeout )); then
       echoerr "Codex node $node_index did not start within ${timeout} seconds."
       return 1
     fi

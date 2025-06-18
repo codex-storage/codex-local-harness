@@ -5,6 +5,46 @@ setup() {
   source "${LIB_SRC}/procmon.bash"
 }
 
+@test "should kill processes recursively" {
+  # Note that this is fragile. We need to structure
+  # the process tree such that the parent does not exit
+  # before the child, or the child will be reparented to
+  # init and won't be killed. The defensive thing to do
+  # here is to wait on any child you'd like cleaned before
+  # exiting its parent subshell.
+  (
+    # each backgrounded process generates two processes:
+    # the process itself, and its subshell.
+    sleep 500 &
+    sl1=$!
+    (
+      sleep 500 &
+      await $!
+    ) &
+    sh1=$!
+    (
+      sleep 500 &
+      await $!
+    ) &
+    sh2=$!
+    await $sl1
+    await $sh1
+    await $sh2
+  ) &
+  parent=$!
+
+  pm_list_descendants "$parent"
+  assert_equal "${#result[@]}" 9
+
+  pm_kill_rec "$parent"
+  await "$parent" 5
+
+  pm_list_descendants "$parent"
+  # the parent will still show amongst its descendants,
+  # even though it is dead.
+  assert_equal "${#result[@]}" 1
+}
+
 @test "should not start process monitor twice" {
   assert_equal $(pm_state) "halted"
 

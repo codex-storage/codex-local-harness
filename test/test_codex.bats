@@ -50,14 +50,15 @@ setup() {
   rm -rf "$data_dir"
 }
 
-#@test "should launch a Codex node" {
-#  export CLH_CODEX_BINARY="${BATS_TEST_DIRNAME}/codex/build/codex"
-#
-#  assert cdx_launch_node 0
-#
-#  # Node must be running and ready.
-#  assert [ ! -z "$(cdx_get_spr 0)" ]
-#  # We should see a log file and a data directory.
-#  assert [ -f "${_cdx_output}/logs/codex-0.log" ]
-#  assert [ -d "${_cdx_output}/data/codex-0" ]
-#}
+# @test "should launch a Codex node" {
+#   export CLH_CODEX_BINARY="${BATS_TEST_DIRNAME}/codex/build/codex"
+
+#   assert cdx_launch_node 0
+#   assert cdx_ensure_ready 0 1
+
+#   # We should see a log file and a data directory.
+#   assert [ -f "${_cdx_output}/logs/codex-0.log" ]
+#   assert [ -d "${_cdx_output}/data/codex-0" ]
+
+#   cdx_destroy_node 0
+# }

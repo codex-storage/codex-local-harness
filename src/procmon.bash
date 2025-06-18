@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
 # shellcheck source=./src/config.bash
@@ -9,7 +8,6 @@ source "${LIB_SRC}/utils.bash"
 
 _pm_output=$(clh_output_folder "pm")
 _pm_pid=""
-_pm_stop_mode=""
 
 _pm_init_output() {
   rm -rf "${_pm_output}" || true
@@ -17,21 +15,12 @@ _pm_init_output() {
 }
 
 pm_start() {
-  if [ -n "$_pm_pid" ]; then
-    echoerr "[procmon] process monitor already started"
-    return 1
-  fi
-
+  _pm_assert_state_not "running" || return 1
   _pm_init_output
-  _pm_stop_mode="$1"
-
-  local pid=$$
-  _pm_pgid=$(ps -o pgid= -p ${pid} | sed 's/ //g')
-  export _pm_pgid
-  export _pm_output
 
   echoerr "[procmon] starting process monitor"
 
+  export _pm_output
   (
     _pm_pid=${BASHPID}
     while true; do
@@ -65,6 +54,8 @@ pm_start() {
 }
 
 pm_track_last_job() {
+  _pm_assert_state "running" || return 1
+
   local pid=$!
   if [ ! -f "${_pm_output}/${pid}.pid" ]; then
     touch "${_pm_output}/${pid}.pid"
@@ -72,6 +63,8 @@ pm_track_last_job() {
 }
 
 pm_known_pids() {
+  _pm_assert_state "running" || return 1
+
   local base_name pid
   result=()
   for pid_file in "${_pm_output}"/*.pid; do
@@ -106,27 +99,19 @@ pm_state() {
 }
 
 _pm_halt() {
-  if [ -z "$_pm_pid" ]; then
-    echoerr "[procmon] process monitor not started"
-    return 1
-  fi
+  _pm_assert_state "running" || return 1
 
-  if ! kill -0 "$_pm_pid"; then
-    echoerr "[procmon] process monitor not running"
-    return 1
-  fi
+  pm_known_pids
+  pids=("${result[@]}")
+
+  for pid in "${pids[@]}"; do
+    pm_kill_rec "${pid}"
+  done
 
   echo "$1" > "${_pm_output}/pm_exit_code"
 
-  if [ "$_pm_stop_mode" = "kill_on_exit" ]; then
-    echoerr "[procmon] stop process group. This will halt the script."
-    kill -s TERM "-$_pm_pgid"
-  else
-    echoerr "[procmon] stop monitor only. Children will be left behind."
-    kill -s TERM "$_pm_pid"
-    await "$_pm_pid"
-    return 0
-  fi
+  # last but not least, harakiri
+  pm_kill_rec "$_pm_pid"
 }
 
 pm_stop() {
@@ -135,7 +120,52 @@ pm_stop() {
 
 pm_job_exit() {
   exit_code=$1
-  echoerr "[procmon] $BASHPID exit with code $exit_code"
   echo "$exit_code" > "${_pm_output}/${BASHPID}.pid"
   exit "$exit_code"
+}
+
+pm_kill_rec() {
+  local parent="$1" descendant
+
+  pm_list_descendants "$parent"
+  for descendant in "${result[@]}"; do
+    echo "[procmon] killing process $descendant"
+    kill -s TERM "$descendant" 2> /dev/null || true
+  done
+
+  return 0
+}
+
+pm_list_descendants() {
+  result=()
+  _pm_list_descendants "$@"
+}
+
+_pm_list_descendants() {
+  local parent="$1"
+  result+=("${parent}")
+
+  for pid in $(ps -o pid --ppid "$parent" | tail -n +2 | tr -d ' '); do
+    _pm_list_descendants "$pid"
+  done
+}
+
+_pm_assert_state_not() {
+  local state="$1" current_state
+  current_state=$(pm_state)
+
+  if [ "$current_state" = "$state" ]; then
+    echoerr "[procmon] illegal state: $current_state"
+    return 1
+  fi
+}
+
+_pm_assert_state() {
+  local state="$1" current_state
+  current_state=$(pm_state)
+
+  if [ "$current_state" != "$state" ]; then
+    echoerr "[procmon] illegal state: $current_state"
+    return 1
+  fi
 }
