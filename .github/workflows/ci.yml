@@ -1,0 +1,32 @@
+name: Lint and Test the Codex Local Harness
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Test Image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: Dockerfile
+        push: false
+        load: true
+        tags: clh:test
+
+    - name: Run Tests
+      run: docker run -it --rm clh:test ./test/bats/bin/bats test/
