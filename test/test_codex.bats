@@ -8,17 +8,17 @@ setup() {
 }
 
 @test "should generate the correct Codex command line for node 0" {
-  assert_equal "$(cdx_cmdline 0)" "codex --nat:none"\
+  assert_equal "$(cdx_cmdline 0)" "${_cdx_binary} --nat:none"\
 " --log-file=${_cdx_output}/logs/codex-0.log"\
 " --data-dir=${_cdx_output}/data/codex-0"\
-" --api-port=8080 --disc-port=8190 --loglevel=INFO"
+" --api-port=8080 --disc-port=8190 --log-level=INFO"
 }
 
 @test "should generate the correct Codex command line for node 1" {
-  assert_equal "$(cdx_cmdline 1 '--bootstrap-node' 'node-spr')" "codex --nat:none"\
+  assert_equal "$(cdx_cmdline 1 '--bootstrap-node' 'node-spr')" "${_cdx_binary} --nat:none"\
 " --bootstrap-node=node-spr --log-file=${_cdx_output}/logs/codex-1.log"\
 " --data-dir=${_cdx_output}/data/codex-1"\
-" --api-port=8081 --disc-port=8191 --loglevel=INFO"
+" --api-port=8081 --disc-port=8191 --log-level=INFO"
 }
 
 @test "should refuse to generate the command line for node > 0 if no SPR is provided" {
@@ -27,11 +27,11 @@ setup() {
 }
 
 @test "should generate metrics options when metrics enabled for node" {
-  assert_equal "$(cdx_cmdline 0 --metrics)" "codex --nat:none"\
+  assert_equal "$(cdx_cmdline 0 --metrics)" "${_cdx_binary} --nat:none"\
 " --metrics --metrics-port=8290 --metrics-address=0.0.0.0"\
 " --log-file=${_cdx_output}/logs/codex-0.log"\
 " --data-dir=${_cdx_output}/data/codex-0"\
-" --api-port=8080 --disc-port=8190 --loglevel=INFO"
+" --api-port=8080 --disc-port=8190 --log-level=INFO"
 }
 
 @test "should fail readiness check if node is not running" {
@@ -70,6 +70,21 @@ setup() {
   assert [ -z "${_cdx_pids[0]}" ]
 
   assert $(! kill -0 "$pid")
+
+  pm_stop
+}
+
+@test "should upload and synchronously download file to Codex node" {
+  pm_start
+
+  assert cdx_launch_node 0
+  assert cdx_ensure_ready 0 3
+
+  filename=$(cdx_generate_file 10)
+  cid=$(cdx_upload_file 0 "$filename")
+
+  cdx_download_file 0 "$cid"
+  assert_equal $(sha1 "${filename}") $(cdx_download_sha1 0 "$cid")
 
   pm_stop
 }
