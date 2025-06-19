@@ -37,9 +37,14 @@ pm_start() {
         fi
 
         exit_code=$(cat "${_pm_output}/${pid}.pid")
+        # If the cat fails, this means the file was deleted. This will typically
+        # only happen this way if the process was removed from tracking and then
+        # killed right after.
+        #
+        # shellcheck disable=SC2181
         if [ $? -ne 0 ]; then
-          echoerr "[procmon] ${pid} died with unknown exit code. Aborting."
-          _pm_halt "halted_no_return"
+          echoerr "[procmon] ${pid} file vanished (removed from tracking?)"
+          continue
         fi
 
         if [ -z "$exit_code" ]; then
