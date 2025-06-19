@@ -14,6 +14,10 @@ _pm_init_output() {
   mkdir -p "${_pm_output}"
 }
 
+# Starts the process monitor.
+# Returns:
+#   1 if the process monitor is already running
+#   0 otherwise
 pm_start() {
   _pm_assert_state_not "running" || return 1
   _pm_init_output
@@ -53,6 +57,17 @@ pm_start() {
   return 0
 }
 
+# Tracks the last job started by the shell as part of a monitored group.
+# If a tracked process dies:
+#  1. without an error code (e.g. it is killed);
+#  2. with a non-zero error code.
+# Then all processes in the process group and their descendants (with caveats)
+# are also killed. This makes sure that the harness does not leave processes
+# behind.
+#
+# Returns:
+#   1 if the process monitor is not running
+#   0 otherwise
 pm_track_last_job() {
   _pm_assert_state "running" || return 1
 
@@ -62,6 +77,29 @@ pm_track_last_job() {
   fi
 }
 
+# Stops tracking a given PID.
+# Arguments:
+#   $1: PID to stop tracking
+# Returns:
+#   1 if the process monitor is not running
+#   0 otherwise
+# Note:
+#   This function is flaky. The process monitor
+#   might still see the PID as tracked after this
+#   function returns for a short period of time,
+#   so do not rely too much on it.
+pm_stop_tracking() {
+  _pm_assert_state "running" || return 1
+
+  local pid=$1
+  rm -rf "${_pm_output}/${pid}.pid" || true
+}
+
+# Returns the list of PIDs being tracked by the process monitor by
+# setting the `result` variable.
+# Returns:
+#   1 if the process monitor is not running
+#   0 otherwise
 pm_known_pids() {
   _pm_assert_state "running" || return 1
 
@@ -114,8 +152,16 @@ _pm_halt() {
   pm_kill_rec "$_pm_pid"
 }
 
+# Stops the process monitor, killing the entire process group.
+# Returns:
+#   1 if the process monitor is not running
+#   0 otherwise
 pm_stop() {
   _pm_halt "halted"
+}
+
+pm_join() {
+  await "$_pm_pid" "$1"
 }
 
 pm_job_exit() {

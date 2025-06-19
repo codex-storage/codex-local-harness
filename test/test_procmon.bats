@@ -130,7 +130,33 @@ setup() {
   await "$p1"
   await "$p2"
 
-  sleep 1
+  pm_join 3
 
   assert_equal $(pm_state) "halted_process_failure"
+}
+
+@test "should no longer track a process if requested" {
+  assert pm_start
+
+  (
+    while true; do
+      sleep 1
+    done
+    pm_job_exit 1
+  ) &
+  pid1=$!
+  pm_track_last_job
+
+  pm_stop_tracking $pid1
+  kill -SIGKILL $pid1
+  await "$pid1"
+
+  # Again, we need to allow time for the procmon
+  # to pick up on the kill.
+  sleep 1
+
+  pm_stop
+  pm_join 3
+
+  assert_equal $(pm_state) "halted"
 }
