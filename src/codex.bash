@@ -102,7 +102,9 @@ cdx_get_spr() {
 }
 
 cdx_launch_node() {
-  _cdx_ensure_outputs 0 || return 1
+  local node_index="$1"
+
+  _cdx_ensure_outputs "${node_index}" || return 1
 
   local codex_cmd
   codex_cmd=$(cdx_cmdline "$@") || return 1
@@ -112,9 +114,19 @@ cdx_launch_node() {
     pm_job_exit $?
   )&
   pm_track_last_job
-  _cdx_pids[$1]=$!
+  _cdx_pids[$node_index]=$!
 
-  cdx_ensure_ready "$@"
+  cdx_ensure_ready "$node_index"
+}
+
+cdx_launch_network() {
+  local node_count="$1" bootstrap_spr
+  cdx_launch_node 0 || return 1
+  bootstrap_spr=$(cdx_get_spr 0) || return 1
+  for i in $(seq 1 "$node_count"); do
+    cdx_launch_node "$i" "--bootstrap-node" "$bootstrap_spr" || return 1
+  done
+  return 0
 }
 
 cdx_pid() {

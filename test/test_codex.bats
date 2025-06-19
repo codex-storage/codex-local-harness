@@ -121,6 +121,28 @@ setup() {
   pm_stop
 }
 
+@test "should launch a Codex network and allow uploading and downloading" {
+  pm_start
+
+  assert cdx_launch_network 5
+
+  filename=$(cdx_generate_file 10)
+  cid=$(cdx_upload_file 0 "$filename")
+
+  handles=()
+  for i in {1..4}; do
+    handles+=($(cdx_download_file_async "$i" "$cid"))
+  done
+
+  assert await_all "${handles[@]}"
+
+  for i in {1..4}; do
+    assert cdx_check_download 0 "$i" "$cid"
+  done
+
+  pm_stop
+}
+
 teardown() {
   clh_clear_outputs
 }

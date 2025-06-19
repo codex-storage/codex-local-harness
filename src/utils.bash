@@ -38,6 +38,13 @@ await() {
   return 0
 }
 
+await_all() {
+  local pids=("$@") timeout=${2:-30}
+  for pid in "${pids[@]}"; do
+    await "$pid" "$timeout" || return 1
+  done
+}
+
 sha1() {
   sha1sum "$1" | cut -d ' ' -f 1 || return 1
 }
