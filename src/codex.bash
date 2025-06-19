@@ -220,3 +220,22 @@ cdx_download_sha1() {
   local node_index="$1" cid="$2"
   sha1 "${_cdx_downloads}/codex-${node_index}/$cid" || return 1
 }
+
+cdx_check_download() {
+  local upload_node="$1"\
+    download_node="$2"\
+    cid="$3"\
+    upload_sha1\
+    download_sha1
+
+  upload_sha1=$(cdx_upload_sha1 "$upload_node" "$cid")
+  download_sha1=$(cdx_download_sha1 "$download_node" "$cid")
+
+  if [ "$upload_sha1" != "$download_sha1" ]; then
+    # shellcheck disable=SC2140
+    echoerr "Download SHA-1 at node $download_node ($download_sha1) does not"\
+" match upload SHA-1 at node $upload_node ($upload_sha1)"
+    return 1
+  fi
+  return 0
+}

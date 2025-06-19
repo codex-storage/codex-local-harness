@@ -74,6 +74,20 @@ setup() {
   pm_stop
 }
 
+@test "should check downloaded content" {
+  mkdir -p "${_cdx_genfiles}"
+  mkdir -p "${_cdx_uploads}/codex-0"
+  mkdir -p "${_cdx_downloads}/codex-1"
+
+  filename=$(cdx_generate_file 10)
+
+  echo "$(sha1 "$filename")" > "${_cdx_uploads}/codex-0/fakecid.sha1"
+  cp "$filename" "${_cdx_downloads}/codex-1/fakecid"
+
+  # Checks that the file uploaded at 0 matches the file downloaded at 1.
+  assert cdx_check_download 0 1 "fakecid"
+}
+
 @test "should upload and synchronously download file from Codex node" {
   pm_start
 
@@ -84,7 +98,8 @@ setup() {
   cid=$(cdx_upload_file 0 "$filename")
 
   assert cdx_download_file 0 "$cid"
-  assert_equal $(sha1 "${filename}") $(cdx_download_sha1 0 "$cid")
+
+  assert cdx_check_download 0 0 "$cid"
 
   pm_stop
 }
@@ -101,7 +116,7 @@ setup() {
   handle=$(cdx_download_file_async 0 "$cid")
   await $handle 3
 
-  assert_equal $(sha1 "${filename}") $(cdx_download_sha1 0 "$cid")
+  assert cdx_check_download 0 0 "$cid"
 
   pm_stop
 }
