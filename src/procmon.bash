@@ -191,6 +191,11 @@ pm_kill_rec() {
     kill -s TERM "$descendant" 2> /dev/null || true
   done
 
+  # Tries to wait so processes are not left lingering.
+  for descendant in "${result[@]}"; do
+    await "$descendant" || echo "[procmon] failed to wait for process $descendant"
+  done
+
   return 0
 }
 

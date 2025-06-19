@@ -117,9 +117,14 @@ cdx_launch_node() {
   cdx_ensure_ready "$@"
 }
 
+cdx_pid() {
+  local node_index="$1"
+  echo "${_cdx_pids[$node_index]}"
+}
+
 cdx_destroy_node() {
   local node_index="$1" wipe_data="${2:-false}" pid
-  pid="${_cdx_pids[$node_index]}"
+  pid="$(cdx_pid "$node_index")"
   if [ -z "$pid" ]; then
     echoerr "Error: no process ID for node $node_index"
     return 1
@@ -195,6 +200,15 @@ cdx_download_file() {
   curl --silent --fail\
     -XGET "http://localhost:$(_cdx_api_port "$node_index")/api/codex/v1/data/$cid/network/stream"\
     -o "${_cdx_downloads}/codex-${node_index}/$cid" || return 1
+}
+
+cdx_download_file_async() {
+  (
+    cdx_download_file "$@"
+    pm_job_exit $?
+  ) &
+  pm_track_last_job
+  echo $!
 }
 
 cdx_upload_sha1() {

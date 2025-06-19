@@ -18,6 +18,10 @@ clh_output_folder() {
   echo "${OUTPUTS}/$1"
 }
 
+clh_clear_outputs() {
+  rm -rf "${OUTPUTS}" || true
+}
+
 echoerr() {
   echo "$@" >&2
 }

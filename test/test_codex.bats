@@ -74,7 +74,7 @@ setup() {
   pm_stop
 }
 
-@test "should upload and synchronously download file to Codex node" {
+@test "should upload and synchronously download file from Codex node" {
   pm_start
 
   assert cdx_launch_node 0
@@ -83,8 +83,29 @@ setup() {
   filename=$(cdx_generate_file 10)
   cid=$(cdx_upload_file 0 "$filename")
 
-  cdx_download_file 0 "$cid"
+  assert cdx_download_file 0 "$cid"
   assert_equal $(sha1 "${filename}") $(cdx_download_sha1 0 "$cid")
 
   pm_stop
+}
+
+@test "should upload and asynchronously download file from Codex node" {
+  pm_start
+
+  assert cdx_launch_node 0
+  assert cdx_ensure_ready 0 3
+
+  filename=$(cdx_generate_file 10)
+  cid=$(cdx_upload_file 0 "$filename")
+
+  handle=$(cdx_download_file_async 0 "$cid")
+  await $handle 3
+
+  assert_equal $(sha1 "${filename}") $(cdx_download_sha1 0 "$cid")
+
+  pm_stop
+}
+
+teardown() {
+  clh_clear_outputs
 }
