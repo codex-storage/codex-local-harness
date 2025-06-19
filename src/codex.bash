@@ -5,17 +5,32 @@ LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 source "${LIB_SRC}/config.bash"
 # shellcheck source=./src/utils.bash
 source "${LIB_SRC}/utils.bash"
+# shellcheck source=./src/procmon.bash
+source "${LIB_SRC}/procmon.bash"
 
 _cdx_output=$(clh_output_folder "codex")
 _cdx_logs="${_cdx_output}/logs"
 _cdx_data="${_cdx_output}/data"
-_cdx_binary="${CLH_CODEX_BINARY:-codex}"
+
+if [ -z "${CODEX_BINARY}" ]; then
+  run command -v codex
+  _cdx_binary="${output}"
+else
+  _cdx_binary="${CODEX_BINARY}"
+fi
+
+if [ ! -f "${_cdx_binary}" ]; then
+  echoerr "Error: no valid Codex binary found"
+  exit 1
+fi
 
 _cdx_base_api_port=8080
 _cdx_base_disc_port=8190
 _cdx_base_metrics_port=8290
 
 _cdx_node_start_timeout=30
+
+declare -A _cdx_pids
 
 cdx_cmdline() {
   local api_port\
@@ -58,7 +73,7 @@ cdx_cmdline() {
   # shellcheck disable=SC2140
   echo "${cdx_cmd}"\
 " --log-file=${_cdx_logs}/codex-${node_index}.log --data-dir=${_cdx_data}/codex-${node_index}"\
-" --api-port=${api_port} --disc-port=${disc_port} --loglevel=INFO"
+" --api-port=${api_port} --disc-port=${disc_port} --log-level=INFO"
 }
 
 cdx_get_spr() {
@@ -75,18 +90,40 @@ cdx_get_spr() {
 }
 
 cdx_launch_node() {
-  _check_codex_binary
+  _cdx_ensure_outputs 0 || return 1
 
   local codex_cmd
-  codex_cmd=$(cdx_cmdline "$@")
+  codex_cmd=$(cdx_cmdline "$@") || return 1
 
   (
     $codex_cmd
     pm_job_exit $?
   )&
   pm_track_last_job
+  _cdx_pids[$1]=$!
 
   cdx_ensure_ready "$@"
+}
+
+cdx_destroy_node() {
+  local node_index="$1" wipe_data="${2:-false}" pid
+  pid="${_cdx_pids[$node_index]}"
+  if [ -z "$pid" ]; then
+    echoerr "Error: no process ID for node $node_index"
+    return 1
+  fi
+
+  # Prevents the whole process group from dying.
+  pm_stop_tracking "$pid"
+  pm_kill_rec "$pid"
+  await "$pid" || return 1
+
+  unset "_cdx_pids[$node_index]"
+
+  if [ "$wipe_data" = true ]; then
+    rm -rf "${_cdx_data}/codex-${node_index}"
+    rm -rf "${_cdx_logs}/codex-${node_index}.log"
+  fi
 }
 
 cdx_ensure_ready() {
@@ -104,4 +141,10 @@ cdx_ensure_ready() {
 
     sleep 0.2
   done
+}
+
+_cdx_ensure_outputs() {
+  local node_index="$1"
+  mkdir -p "${_cdx_logs}" || return 1
+  mkdir -p "${_cdx_data}/codex-${node_index}" || return 1
 }

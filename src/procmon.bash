@@ -35,6 +35,11 @@ pm_start() {
         fi
 
         exit_code=$(cat "${_pm_output}/${pid}.pid")
+        if [ $? -ne 0 ]; then
+          echoerr "[procmon] ${pid} died with unknown exit code. Aborting."
+          _pm_halt "halted_no_return"
+        fi
+
         if [ -z "$exit_code" ]; then
           echoerr "[procmon] ${pid} died with unknown exit code. Aborting."
           _pm_halt "halted_no_return"
@@ -165,8 +170,13 @@ pm_join() {
 }
 
 pm_job_exit() {
-  exit_code=$1
-  echo "$exit_code" > "${_pm_output}/${BASHPID}.pid"
+  local pid_file="${_pm_output}/${BASHPID}.pid" exit_code=$1
+  # If the process is not tracked, don't write down an exit code.
+  if [ ! -f "$pid_file" ]; then
+    echoerr "[procmon] no PID file found for process $BASHPID"
+  else
+    echo "$exit_code" > "${_pm_output}/${BASHPID}.pid"
+  fi
   exit "$exit_code"
 }
 
