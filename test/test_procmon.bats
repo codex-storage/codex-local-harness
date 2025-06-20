@@ -164,8 +164,14 @@ setup() {
 
 @test "should call lifecycle callbacks when processes start and stop" {
   callback() {
-    local proc_type="$1" pid="$2" exit_code="$3"
-    touch "${_pm_output}/${pid}-${proc_type}-${exit_code}"
+    local event="$1" proc_type="$2" pid="$3" exit_code
+
+    if [ "$event" = "start" ]; then
+      touch "${_pm_output}/${pid}-${proc_type}-start"
+    elif [ "$event" = "exit" ]; then
+      exit_code="$4"
+      touch "${_pm_output}/${pid}-${proc_type}-${exit_code}-exit"
+    fi
   }
 
   pm_register_callback "sleepy" "callback"
@@ -174,14 +180,20 @@ setup() {
 
   pid1=$(pm_async sleep 0.1 -%- "sleepy")
   pid2=$(pm_async sleep 0.1 -%- "sleepy")
+  pid3=$(pm_async sleep 0.1 -%- "awake")
 
   await "$pid1"
   await "$pid2"
+  await "$pid3"
 
   pm_stop
 
   assert_equal "$(pm_state)" "halted"
 
-  assert [ -f "${_pm_output}/${pid1}-sleepy-0" ]
-  assert [ -f "${_pm_output}/${pid2}-sleepy-0" ]
+  assert [ -f "${_pm_output}/${pid1}-sleepy-start" ]
+  assert [ -f "${_pm_output}/${pid1}-sleepy-0-exit" ]
+  assert [ -f "${_pm_output}/${pid1}-sleepy-start" ]
+  assert [ -f "${_pm_output}/${pid2}-sleepy-0-exit" ]
+  assert [ ! -f "${_pm_output}/${pid3}-awake-start" ]
+  assert [ ! -f "${_pm_output}/${pid3}-awake-0-exit" ]
 }

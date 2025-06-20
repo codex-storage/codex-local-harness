@@ -17,7 +17,7 @@ source "${LIB_SRC}/utils.bash"
 _pm_output=$(clh_output_folder "pm")
 _pm_pid=""
 
-declare -A _pm_callbacks
+declare -g -A _pm_callbacks
 
 _pm_init_output() {
   rm -rf "${_pm_output}" || true
@@ -248,14 +248,10 @@ pm_async() {
   done
 
   (
+    _pm_invoke_callback "start" "$proc_type" "$BASHPID"
     "${command[@]}"
     exit_code=$?
-    if [ -n "$proc_type" ]; then
-      # calls the callback for this proc type
-      if [ -n "${_pm_callbacks[$proc_type]}" ]; then
-        "${_pm_callbacks[$proc_type]}" "$proc_type" "$BASHPID" "$exit_code"
-      fi
-    fi
+    _pm_invoke_callback "exit" "$proc_type" "$BASHPID" "$exit_code"
     pm_job_exit "$exit_code"
   ) &
   pm_track_last_job
@@ -263,10 +259,18 @@ pm_async() {
 }
 
 pm_register_callback() {
-  _pm_assert_state_not "running" || return 1
-
   local proc_type="$1" callback="$2"
   _pm_callbacks[$proc_type]="$callback"
+}
+
+_pm_invoke_callback() {
+  local event="$1" proc_type="$2" pid="$3" exit_code="$4"
+  if [ -n "$proc_type" ]; then
+    # calls the callback for this proc type
+    if [ -n "${_pm_callbacks[$proc_type]}" ]; then
+      "${_pm_callbacks[$proc_type]}" "$event" "$proc_type" "$pid" "$exit_code"
+    fi
+  fi
 }
 
 _pm_list_descendants() {
