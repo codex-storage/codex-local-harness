@@ -17,6 +17,8 @@ source "${LIB_SRC}/utils.bash"
 _pm_output=$(clh_output_folder "pm")
 _pm_pid=""
 
+declare -A _pm_callbacks
+
 _pm_init_output() {
   rm -rf "${_pm_output}" || true
   mkdir -p "${_pm_output}"
@@ -229,12 +231,42 @@ pm_list_descendants() {
 }
 
 pm_async() {
+  proc_type=""
+  command=()
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      -%-)
+        shift
+        proc_type="$1"
+        break
+        ;;
+      *)
+        command+=("$1")
+        shift
+        ;;
+    esac
+  done
+
   (
-    "$@"
-    pm_job_exit "$?"
+    "${command[@]}"
+    exit_code=$?
+    if [ -n "$proc_type" ]; then
+      # calls the callback for this proc type
+      if [ -n "${_pm_callbacks[$proc_type]}" ]; then
+        "${_pm_callbacks[$proc_type]}" "$proc_type" "$BASHPID" "$exit_code"
+      fi
+    fi
+    pm_job_exit "$exit_code"
   ) &
   pm_track_last_job
   echo $!
+}
+
+pm_register_callback() {
+  _pm_assert_state_not "running" || return 1
+
+  local proc_type="$1" callback="$2"
+  _pm_callbacks[$proc_type]="$callback"
 }
 
 _pm_list_descendants() {

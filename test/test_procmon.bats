@@ -162,3 +162,26 @@ setup() {
   assert_equal "$(pm_state)" "halted"
 }
 
+@test "should call lifecycle callbacks when processes start and stop" {
+  callback() {
+    local proc_type="$1" pid="$2" exit_code="$3"
+    touch "${_pm_output}/${pid}-${proc_type}-${exit_code}"
+  }
+
+  pm_register_callback "sleepy" "callback"
+
+  pm_start
+
+  pid1=$(pm_async sleep 0.1 -%- "sleepy")
+  pid2=$(pm_async sleep 0.1 -%- "sleepy")
+
+  await "$pid1"
+  await "$pid2"
+
+  pm_stop
+
+  assert_equal "$(pm_state)" "halted"
+
+  assert [ -f "${_pm_output}/${pid1}-sleepy-0" ]
+  assert [ -f "${_pm_output}/${pid2}-sleepy-0" ]
+}
