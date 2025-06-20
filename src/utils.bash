@@ -28,13 +28,14 @@ echoerr() {
 
 await() {
   local pid=$1 timeout=${2:-30} start="${SECONDS}"
-  while kill -0 "$pid"; do
+  while kill -0 "$pid" 2> /dev/null; do
     if ((SECONDS - start > timeout)); then
       echoerr "Error: timeout waiting for process $pid to exit"
       return 1
     fi
     sleep 0.1
   done
+  echoerr "Process $pid exited"
   return 0
 }
 

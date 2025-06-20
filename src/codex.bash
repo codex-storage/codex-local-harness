@@ -24,11 +24,23 @@ fi
 
 # Output folders
 _cdx_output=$(clh_output_folder "codex")
+# generated files
 _cdx_genfiles="${_cdx_output}/genfiles"
+# downloaded files, per node. File names are CIDs
 _cdx_downloads="${_cdx_output}/downloads"
+# SHA1 of uploaded files, per node. File names are CIDs
 _cdx_uploads="${_cdx_output}/uploads"
+# Codex node logs, per node
 _cdx_logs="${_cdx_output}/logs"
+# Codex data directories, per node
 _cdx_data="${_cdx_output}/data"
+
+# Partial timings, per operation per node
+_cdx_timing_partials="${_cdx_output}/timing"
+# Custom prefix for timing logs
+_cdx_timing_prefix=""
+# Log file where timings are aggregated
+_cdx_timing_log="/dev/null"
 
 # Base ports and timeouts
 _cdx_base_api_port=8080
@@ -104,7 +116,8 @@ cdx_get_spr() {
 cdx_launch_node() {
   local node_index="$1"
 
-  _cdx_ensure_outputs "${node_index}" || return 1
+  _cdx_init_global_outputs || return 1
+  _cdx_init_node_outputs "${node_index}" || return 1
 
   local codex_cmd
   codex_cmd=$(cdx_cmdline "$@") || return 1
@@ -172,13 +185,20 @@ cdx_ensure_ready() {
   done
 }
 
-_cdx_ensure_outputs() {
+_cdx_init_node_outputs() {
   local node_index="$1"
-  mkdir -p "${_cdx_logs}" || return 1
   mkdir -p "${_cdx_data}/codex-${node_index}" || return 1
-  mkdir -p "${_cdx_genfiles}" || return 1
   mkdir -p "${_cdx_downloads}/codex-${node_index}" || return 1
   mkdir -p "${_cdx_uploads}/codex-${node_index}" || return 1
+}
+
+# XXX: output initialization is a bit of a pain. Right now it's
+#   being piggybacked on cdx_launch_node and cdx_log_timings_start
+#   so we don't have to add extra initialization calls.
+_cdx_init_global_outputs() {
+  mkdir -p "${_cdx_logs}" || return 1
+  mkdir -p "${_cdx_genfiles}" || return 1
+  mkdir -p "${_cdx_timing_partials}" || return 1
 }
 
 cdx_generate_file() {
@@ -208,19 +228,21 @@ cdx_upload_file() {
 }
 
 cdx_download_file() {
-  local node_index="$1" cid="$2"
-  curl --silent --fail\
+  local node_index="$1" cid="$2" timestamp
+  timestamp="$(date +%s)" || return 1
+
+  TIMEFORMAT="${_cdx_timing_prefix}download,${node_index},${cid},%E,%U,%S"
+  # Note that timing partial filenames are constructed so that lexicographic sorting
+  # puts the most recent entries first, while at the same time breaking ties arbitrarily
+  # for entries that happen within the same second.
+  { time curl --silent --fail\
     -XGET "http://localhost:$(_cdx_api_port "$node_index")/api/codex/v1/data/$cid/network/stream"\
-    -o "${_cdx_downloads}/codex-${node_index}/$cid" || return 1
+    -o "${_cdx_downloads}/codex-${node_index}/$cid" ; } 2> \
+    "${_cdx_timing_partials}/codex-${node_index}-${timestamp}-${RANDOM}.csv"
 }
 
 cdx_download_file_async() {
-  (
-    cdx_download_file "$@"
-    pm_job_exit $?
-  ) &
-  pm_track_last_job
-  echo $!
+  pm_async cdx_download_file "$@"
 }
 
 cdx_upload_sha1() {
@@ -250,4 +272,32 @@ cdx_check_download() {
     return 1
   fi
   return 0
+}
+
+cdx_log_timings_start() {
+  _cdx_init_global_outputs || return 1
+
+  local log_file="$1" prefix="$2"
+
+  touch "$log_file" || return 1
+
+  _cdx_timing_log="$log_file"
+  if [[ ! "$prefix" =~ ',$' ]]; then
+    prefix="$prefix,"
+  fi
+  _cdx_timing_prefix="$prefix"
+}
+
+cdx_flush_partial_timings() {
+  for file in "${_cdx_timing_partials}"/*; do
+    cat "$file" >> "${_cdx_timing_log}" || return 1
+    rm "$file"
+  done
+}
+
+cdx_log_timings_end() {
+  cdx_flush_partial_timings
+
+  _cdx_timing_log="/dev/null"
+  _cdx_timing_prefix=""
 }

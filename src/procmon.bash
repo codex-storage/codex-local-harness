@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#
+# procmon is a process monitor that tracks a set (group) of processes
+# and kills the entire process group and all of its descendants if one
+# of them fails or gets killed. It is used to ensure that no processes
+# from failed experiments are left behind.
+#
 set -o pipefail
 
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
@@ -32,14 +38,14 @@ pm_start() {
     while true; do
       pm_known_pids
       for pid in "${result[@]}"; do
-        if kill -0 "${pid}"; then
+        if kill -0 "${pid}" 2> /dev/null; then
           continue
         fi
 
         exit_code=$(cat "${_pm_output}/${pid}.pid")
-        # If the cat fails, this means the file was deleted. This will typically
-        # only happen this way if the process was removed from tracking and then
-        # killed right after.
+        # If the cat fails, this means the file was deleted, which means
+        # the process is no longer being tracked but the call to pm_stop_tracking
+        # happened after we called pm_known_pids last. Simply ignore the process.
         #
         # shellcheck disable=SC2181
         if [ $? -ne 0 ]; then
@@ -47,17 +53,22 @@ pm_start() {
           continue
         fi
 
+        # Parent process crashed or got killed. We won't get a return code in
+        # these cases.
         if [ -z "$exit_code" ]; then
           echoerr "[procmon] ${pid} died with unknown exit code. Aborting."
           _pm_halt "halted_no_return"
         fi
 
+        # Parent process exited successfully, all good.
         if [ "$exit_code" -eq 0 ]; then
           echoerr "[procmon] ${pid} died with exit code $exit_code."
           rm "${_pm_output}/${pid}.pid"
           continue
         fi
 
+        # If we got thus far, the parent process died with a non-zero exit code,
+        # so we kill the whole process group.
         echoerr "[procmon] ${pid} is dead with exit code $exit_code. Aborting."
         _pm_halt "halted_process_failure"
       done
@@ -89,17 +100,13 @@ pm_track_last_job() {
   fi
 }
 
-# Stops tracking a given PID.
+# Stops tracking a given PID. This means that the process dying or exiting
+# with an error code will no longer stop the whole process group.
 # Arguments:
 #   $1: PID to stop tracking
 # Returns:
 #   1 if the process monitor is not running
 #   0 otherwise
-# Note:
-#   This function is flaky. The process monitor
-#   might still see the PID as tracked after this
-#   function returns for a short period of time,
-#   so do not rely too much on it.
 pm_stop_tracking() {
   _pm_assert_state "running" || return 1
 
@@ -172,10 +179,18 @@ pm_stop() {
   _pm_halt "halted"
 }
 
+# Waits for the process monitor to exit. Returns immediately if
+# the process monitor is not running.
+# Arguments:
+#   $1: timeout in seconds
 pm_join() {
   await "$_pm_pid" "$1"
 }
 
+# This function is called by the shell running a background job before
+# it exits to communicate the exit code to the process monitor.
+# Arguments:
+#   $1: exit code
 pm_job_exit() {
   local pid_file="${_pm_output}/${BASHPID}.pid" exit_code=$1
   # If the process is not tracked, don't write down an exit code.
@@ -187,6 +202,10 @@ pm_job_exit() {
   exit "$exit_code"
 }
 
+# Kills a process and all of its descendants. This is full of caveats
+# so make sure you see `test_procmon` for an example of how to use it.
+# Arguments:
+#   $1: process ID
 pm_kill_rec() {
   local parent="$1" descendant
 
@@ -207,6 +226,15 @@ pm_kill_rec() {
 pm_list_descendants() {
   result=()
   _pm_list_descendants "$@"
+}
+
+pm_async() {
+  (
+    "$@"
+    pm_job_exit "$?"
+  ) &
+  pm_track_last_job
+  echo $!
 }
 
 _pm_list_descendants() {

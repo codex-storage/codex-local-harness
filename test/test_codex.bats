@@ -4,10 +4,12 @@ setup() {
   load test_helper/common_setup
   common_setup
 
+  # shellcheck source=./src/codex.bash
   source "${LIB_SRC}/codex.bash"
 }
 
 @test "should generate the correct Codex command line for node 0" {
+  # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0)" "${_cdx_binary} --nat:none"\
 " --log-file=${_cdx_output}/logs/codex-0.log"\
 " --data-dir=${_cdx_output}/data/codex-0"\
@@ -15,6 +17,7 @@ setup() {
 }
 
 @test "should generate the correct Codex command line for node 1" {
+  # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 1 '--bootstrap-node' 'node-spr')" "${_cdx_binary} --nat:none"\
 " --bootstrap-node=node-spr --log-file=${_cdx_output}/logs/codex-1.log"\
 " --data-dir=${_cdx_output}/data/codex-1"\
@@ -27,6 +30,7 @@ setup() {
 }
 
 @test "should generate metrics options when metrics enabled for node" {
+  # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0 --metrics)" "${_cdx_binary} --nat:none"\
 " --metrics --metrics-port=8290 --metrics-address=0.0.0.0"\
 " --log-file=${_cdx_output}/logs/codex-0.log"\
@@ -69,7 +73,8 @@ setup() {
   refute [ -f "${_cdx_output}/logs/codex-0.log" ]
   assert [ -z "${_cdx_pids[0]}" ]
 
-  assert $(! kill -0 "$pid")
+  # Node should already be dead.
+  refute kill -0 "$pid"
 
   pm_stop
 }
@@ -81,7 +86,7 @@ setup() {
 
   filename=$(cdx_generate_file 10)
 
-  echo "$(sha1 "$filename")" > "${_cdx_uploads}/codex-0/fakecid.sha1"
+  sha1 "$filename" > "${_cdx_uploads}/codex-0/fakecid.sha1"
   cp "$filename" "${_cdx_downloads}/codex-1/fakecid"
 
   # Checks that the file uploaded at 0 matches the file downloaded at 1.
@@ -114,7 +119,7 @@ setup() {
   cid=$(cdx_upload_file 0 "$filename")
 
   handle=$(cdx_download_file_async 0 "$cid")
-  await $handle 3
+  await "$handle" 3
 
   assert cdx_check_download 0 0 "$cid"
 
@@ -131,7 +136,7 @@ setup() {
 
   handles=()
   for i in {1..4}; do
-    handles+=($(cdx_download_file_async "$i" "$cid"))
+    handles+=("$(cdx_download_file_async "$i" "$cid")")
   done
 
   assert await_all "${handles[@]}"
@@ -141,6 +146,48 @@ setup() {
   done
 
   pm_stop
+}
+
+@test "should log download timing information when requested" {
+  pm_start
+
+  cdx_log_timings_start "${_cdx_output}/experiment-0.csv" "experiment-0,100MB"
+
+  assert cdx_launch_network 5
+
+  filename=$(cdx_generate_file 10)
+  cid=$(cdx_upload_file 0 "$filename")
+
+  handles=()
+  for i in {1..4}; do
+    handles+=("$(cdx_download_file_async "$i" "$cid")")
+  done
+
+  assert await_all "${handles[@]}"
+
+  for i in {1..4}; do
+    assert cdx_check_download 0 "$i" "$cid"
+  done
+
+  cdx_log_timings_end
+
+  pm_stop
+
+  decimal_regex='^[0-9]+(\.[0-9]+)?$'
+
+  while IFS=',' read -r experiment file_size operation node_index recorded_cid wallclock user system; do
+    assert [ "$experiment" = "experiment-0" ]
+    assert [ "$file_size" = "100MB" ]
+    assert [ "$recorded_cid" = "$cid" ]
+    assert [ "$operation" = "download" ]
+
+    # We can't use asserts for regex matches so use "raw" bats
+    # assertions.
+    [[ "$node_index" =~ [1-4] ]]
+    [[ "$wallclock" =~ $decimal_regex ]]
+    [[ "$user" =~ $decimal_regex ]]
+    [[ "$system" =~ $decimal_regex ]]
+  done < "${_cdx_output}/experiment-0.csv"
 }
 
 teardown() {

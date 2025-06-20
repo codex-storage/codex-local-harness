@@ -2,6 +2,7 @@ setup() {
   load test_helper/common_setup
   common_setup
 
+  # shellcheck source=./src/procmon.bash
   source "${LIB_SRC}/procmon.bash"
 }
 
@@ -46,15 +47,15 @@ setup() {
 }
 
 @test "should not start process monitor twice" {
-  assert_equal $(pm_state) "halted"
+  assert_equal "$(pm_state)" "halted"
 
   assert pm_start
-  assert_equal $(pm_state) "running"
+  assert_equal "$(pm_state)" "running"
 
   refute pm_start
 
   assert pm_stop
-  assert_equal $(pm_state) "halted"
+  assert_equal "$(pm_state)" "halted"
 }
 
 @test "should not stop the process monitor if it wasn't started" {
@@ -132,7 +133,7 @@ setup() {
 
   pm_join 3
 
-  assert_equal $(pm_state) "halted_process_failure"
+  assert_equal "$(pm_state)" "halted_process_failure"
 }
 
 @test "should no longer track a process if requested" {
@@ -158,5 +159,6 @@ setup() {
   pm_stop
   pm_join 3
 
-  assert_equal $(pm_state) "halted"
+  assert_equal "$(pm_state)" "halted"
 }
+
