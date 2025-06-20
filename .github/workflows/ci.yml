@@ -28,5 +28,8 @@ jobs:
         load: true
         tags: clh:test
 
+    - name: Lint
+      run: docker run -v --rm clh:test bash -c 'shellcheck -x ./src/* ./test/*.bats'
+
     - name: Run Tests
       run: docker run -v --rm clh:test ./test/bats/bin/bats test/
