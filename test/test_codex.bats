@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+# shellcheck disable=SC2128
 setup() {
   load test_helper/common_setup
   common_setup
@@ -118,7 +118,9 @@ setup() {
   filename=$(cdx_generate_file 10)
   cid=$(cdx_upload_file 0 "$filename")
 
-  handle=$(cdx_download_file_async 0 "$cid")
+  cdx_download_file_async 0 "$cid"
+  handle=$result
+
   await "$handle" 3
 
   assert cdx_check_download 0 0 "$cid"
@@ -136,7 +138,8 @@ setup() {
 
   handles=()
   for i in {1..4}; do
-    handles+=("$(cdx_download_file_async "$i" "$cid")")
+    cdx_download_file_async "$i" "$cid"
+    handles+=("$result")
   done
 
   assert await_all "${handles[@]}"
@@ -160,7 +163,8 @@ setup() {
 
   handles=()
   for i in {1..4}; do
-    handles+=("$(cdx_download_file_async "$i" "$cid")")
+    cdx_download_file_async "$i" "$cid"
+    handles+=("$result")
   done
 
   assert await_all "${handles[@]}"
@@ -170,8 +174,10 @@ setup() {
   done
 
   cdx_log_timings_end
-
   pm_stop
+
+  assert [ -f "${_cdx_output}/experiment-0.csv" ]
+  assert [ "$(<"${_cdx_output}/experiment-0.csv" wc -l)" -eq 4 ]
 
   decimal_regex='^[0-9]+(\.[0-9]+)?$'
 
@@ -189,6 +195,21 @@ setup() {
     [[ "$system" =~ $decimal_regex ]]
   done < "${_cdx_output}/experiment-0.csv"
 }
+
+# @test "should add a prometheus target for each Codex node when requested" {
+#   pm_start
+
+#   cdx_enable_prometheus "anexperiment" "84858"
+
+#   cdx_launch_node 0
+#   config_file="${_prom_output}/8290-anexperiment-84858-node-1-codex.json"
+#   assert [ -f "$config_file" ]
+
+#   cdx_destroy_node 0
+#   assert [ ! -f "$config_file" ]
+
+#   pm_stop
+# }
 
 teardown() {
   clh_clear_outputs

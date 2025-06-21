@@ -1,3 +1,4 @@
+# shellcheck disable=SC2128
 setup() {
   load test_helper/common_setup
   common_setup
@@ -68,23 +69,18 @@ setup() {
   pm_known_pids
   assert [ ${#result[@]} -eq 0 ]
 
-  (
+  # shellcheck disable=SC2317
+  job() {
     while [ ! -f "${_pm_output}/sync" ]; do
       sleep 0.1
     done
-    pm_job_exit 0
-  ) &
-  pm_track_last_job
-  p1=$!
+  }
 
-  (
-    while [ ! -f "${_pm_output}/sync" ]; do
-      sleep 0.1
-    done
-    pm_job_exit 0
-  ) &
-  pm_track_last_job
-  p2=$!
+  pm_async job
+  p1=$result
+
+  pm_async job
+  p2=$result
 
   pm_known_pids
   assert [ ${#result[@]} -eq 2 ]
@@ -108,23 +104,20 @@ setup() {
 @test "should stop the monitor and all other processes if one process fails" {
   assert pm_start
 
-  (
+  # shellcheck disable=SC2317
+  job() {
+    exit_code=$1
     while [ ! -f "${_pm_output}/sync" ]; do
       sleep 0.1
     done
-    pm_job_exit 1
-  ) &
-  pm_track_last_job
-  p1=$!
+    return 1
+  }
 
-  (
-    while [ ! -f "${_pm_output}/sync" ]; do
-      sleep 1
-    done
-    pm_job_exit 0
-  ) &
-  pm_track_last_job
-  p2=$!
+  pm_async job 0
+  p1=$result
+
+  pm_async job 1
+  p2=$result
 
   touch "${_pm_output}/sync"
 
@@ -139,48 +132,54 @@ setup() {
 @test "should no longer track a process if requested" {
   assert pm_start
 
-  (
-    while true; do
-      sleep 1
-    done
-    pm_job_exit 1
-  ) &
-  pid1=$!
-  pm_track_last_job
+  job() {
+    echoerr "starting job"
+    touch "${_pm_output}/sync"
+    sleep 50
+  }
 
-  pm_stop_tracking $pid1
-  kill -SIGKILL $pid1
+  pm_async job
+  pid1=$result
+
+  while [ ! -f "${_pm_output}/sync" ]; do
+    sleep 0.1
+  done
+
+  pm_stop_tracking "$pid1" # remove this and the test should fail
+  pm_kill_rec "$pid1"
   await "$pid1"
 
-  # Again, we need to allow time for the procmon
-  # to pick up on the kill.
-  sleep 1
+  # Sleeps a bit to let the procmon catch up.
+  sleep 3
 
   pm_stop
-  pm_join 3
 
   assert_equal "$(pm_state)" "halted"
 }
 
-@test "should call lifecycle callbacks when processes start and stop" {
-  callback() {
-    local event="$1" proc_type="$2" pid="$3" exit_code
+callback() {
+  local event="$1" proc_type="$2" pid="$3" exit_code
 
-    if [ "$event" = "start" ]; then
-      touch "${_pm_output}/${pid}-${proc_type}-start"
-    elif [ "$event" = "exit" ]; then
-      exit_code="$4"
-      touch "${_pm_output}/${pid}-${proc_type}-${exit_code}-exit"
-    fi
-  }
+  if [ "$event" = "start" ]; then
+    touch "${_pm_output}/${pid}-${proc_type}-start"
+  elif [ "$event" = "exit" ]; then
+    exit_code="$4"
+    touch "${_pm_output}/${pid}-${proc_type}-${exit_code}-exit"
+  fi
+}
+
+@test "should call lifecycle callbacks when processes start and stop" {
 
   pm_register_callback "sleepy" "callback"
 
   pm_start
 
-  pid1=$(pm_async sleep 0.1 -%- "sleepy")
-  pid2=$(pm_async sleep 0.1 -%- "sleepy")
-  pid3=$(pm_async sleep 0.1 -%- "awake")
+  pm_async sleep 0.1 -%- "sleepy"
+  pid1=$result
+  pm_async sleep 0.1 -%- "sleepy"
+  pid2=$result
+  pm_async sleep 0.1 -%- "awake"
+  pid3=$result
 
   await "$pid1"
   await "$pid2"
@@ -196,4 +195,25 @@ setup() {
   assert [ -f "${_pm_output}/${pid2}-sleepy-0-exit" ]
   assert [ ! -f "${_pm_output}/${pid3}-awake-start" ]
   assert [ ! -f "${_pm_output}/${pid3}-awake-0-exit" ]
+}
+
+@test "should invoke lifecycle callback when process is killed" {
+  pm_register_callback "sleepy" "callback"
+
+  pm_start
+
+  pm_async sleep 10 -%- "sleepy"
+  pid1=$result
+  echoerr "Run this line"
+  pm_async false -%- "sleepy"
+  pid2=$result
+
+  pm_join
+
+  assert_equal "$(pm_state)" "halted_process_failure"
+
+  assert [ -f "${_pm_output}/${pid1}-sleepy-start" ]
+  assert [ -f "${_pm_output}/${pid1}-sleepy-killed-exit" ]
+  assert [ -f "${_pm_output}/${pid2}-sleepy-start" ]
+  assert [ -f "${_pm_output}/${pid2}-sleepy-1-exit" ]
 }

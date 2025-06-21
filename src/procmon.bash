@@ -39,6 +39,7 @@ pm_start() {
     _pm_pid=${BASHPID}
     while true; do
       pm_known_pids
+      echoerr "Known PIDs:" "${result[@]}"
       for pid in "${result[@]}"; do
         if kill -0 "${pid}" 2> /dev/null; then
           continue
@@ -80,26 +81,6 @@ pm_start() {
   _pm_pid=$!
   echoerr "[procmon] started with PID $_pm_pid"
   return 0
-}
-
-# Tracks the last job started by the shell as part of a monitored group.
-# If a tracked process dies:
-#  1. without an error code (e.g. it is killed);
-#  2. with a non-zero error code.
-# Then all processes in the process group and their descendants (with caveats)
-# are also killed. This makes sure that the harness does not leave processes
-# behind.
-#
-# Returns:
-#   1 if the process monitor is not running
-#   0 otherwise
-pm_track_last_job() {
-  _pm_assert_state "running" || return 1
-
-  local pid=$!
-  if [ ! -f "${_pm_output}/${pid}.pid" ]; then
-    touch "${_pm_output}/${pid}.pid"
-  fi
 }
 
 # Stops tracking a given PID. This means that the process dying or exiting
@@ -189,21 +170,6 @@ pm_join() {
   await "$_pm_pid" "$1"
 }
 
-# This function is called by the shell running a background job before
-# it exits to communicate the exit code to the process monitor.
-# Arguments:
-#   $1: exit code
-pm_job_exit() {
-  local pid_file="${_pm_output}/${BASHPID}.pid" exit_code=$1
-  # If the process is not tracked, don't write down an exit code.
-  if [ ! -f "$pid_file" ]; then
-    echoerr "[procmon] no PID file found for process $BASHPID"
-  else
-    echo "$exit_code" > "${_pm_output}/${BASHPID}.pid"
-  fi
-  exit "$exit_code"
-}
-
 # Kills a process and all of its descendants. This is full of caveats
 # so make sure you see `test_procmon` for an example of how to use it.
 # Arguments:
@@ -248,14 +214,38 @@ pm_async() {
   done
 
   (
-    _pm_invoke_callback "start" "$proc_type" "$BASHPID"
+    set +e
+    _pm_job_started "${BASHPID}" "$proc_type"
+    trap '_pm_job_exited "${BASHPID}" "$proc_type" "killed"' TERM
+    trap '_pm_job_exited "${BASHPID}" "$proc_type" "$?"' EXIT
     "${command[@]}"
-    exit_code=$?
-    _pm_invoke_callback "exit" "$proc_type" "$BASHPID" "$exit_code"
-    pm_job_exit "$exit_code"
   ) &
-  pm_track_last_job
-  echo $!
+  result=("$!")
+}
+
+_pm_job_started() {
+  local pid=$1 proc_type=$2
+  echoerr "[procmon] job started: $pid ($proc_type)"
+  if [ ! -f "${_pm_output}/${pid}.pid" ]; then
+    touch "${_pm_output}/${pid}.pid"
+  fi
+  _pm_invoke_callback "start" "$proc_type" "$pid"
+}
+
+_pm_job_exited() {
+  local pid=$1\
+    proc_type=$2\
+    exit_code=$3
+
+  local pid_file="${_pm_output}/${pid}.pid"
+
+  # If the process is not tracked, don't write down an exit code.
+  if [ ! -f "$pid_file" ]; then
+    echoerr "[procmon] no PID file found for process $pid"
+  else
+    echo "$exit_code" > "$pid_file"
+  fi
+  _pm_invoke_callback "exit" "$proc_type" "$pid" "$exit_code"
 }
 
 pm_register_callback() {

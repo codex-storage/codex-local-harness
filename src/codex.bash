@@ -122,11 +122,10 @@ cdx_launch_node() {
   local codex_cmd
   codex_cmd=$(cdx_cmdline "$@") || return 1
 
-  (
-    $codex_cmd
-    pm_job_exit $?
-  )&
-  pm_track_last_job
+  cmd_array=()
+  IFS=' ' read -r -a cmd_array <<<"$codex_cmd"
+
+  pm_async "${cmd_array[@]}" -%- "codex"
   _cdx_pids[$node_index]=$!
 
   cdx_ensure_ready "$node_index"
