@@ -12,12 +12,20 @@ LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 # shellcheck source=./src/utils.bash
 source "${LIB_SRC}/utils.bash"
 
-_pm_output=$(clh_output_folder "pm")
 _pm_pid=""
 
 declare -g -A _pm_callbacks
 
+pm_set_outputs() {
+  _pm_output="$1"
+}
+
 _pm_init_output() {
+  if [ -z "${_pm_output}" ]; then
+    echoerr "Error: outputs not set"
+    return 1
+  fi
+
   rm -rf "${_pm_output}" || true
   mkdir -p "${_pm_output}"
 }
@@ -28,16 +36,16 @@ _pm_init_output() {
 #   0 otherwise
 pm_start() {
   _pm_assert_state_not "running" || return 1
-  _pm_init_output
+  _pm_init_output || return 1
 
   echoerr "[procmon] starting process monitor"
 
   export _pm_output
   (
     _pm_pid=${BASHPID}
+    echoerr "[procmon] started with PID $_pm_pid"
     while true; do
       pm_known_pids
-      echoerr "Known PIDs:" "${result[@]}"
       for pid in "${result[@]}"; do
         if kill -0 "${pid}" 2> /dev/null; then
           continue
@@ -134,6 +142,12 @@ pm_state() {
 
   echo "error_no_exit_code"
   return 1
+}
+
+pm_is_running() {
+  local state
+  state=$(pm_state)
+  [ "$state" = "running" ]
 }
 
 _pm_halt() {

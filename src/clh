@@ -2,5 +2,14 @@
 
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
+PROM_TARGETS_DIR=${PROM_TARGETS_DIR:-"${LIB_SRC}/../dashboard/targets/"}
+PROM_TARGETS_DIR=$(realpath "${PROM_TARGETS_DIR}")
+
+OUTPUTS=${OUTPUTS:-"${LIB_SRC}/../outputs"}
+OUTPUTS=$(realpath "${OUTPUTS}")
+
 # shellcheck source=./src/experiment.bash
 source "${LIB_SRC}/experiment.bash"
+
+exp_set_outputs "${OUTPUTS}"
+prom_set_outputs "${PROM_TARGETS_DIR}"

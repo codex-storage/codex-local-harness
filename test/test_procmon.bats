@@ -1,3 +1,4 @@
+#!/usr/bin/env bats
 # shellcheck disable=SC2128
 setup() {
   load test_helper/common_setup
@@ -5,6 +6,8 @@ setup() {
 
   # shellcheck source=./src/procmon.bash
   source "${LIB_SRC}/procmon.bash"
+
+  pm_set_outputs "${TEST_OUTPUTS}/pm"
 }
 
 @test "should kill processes recursively" {

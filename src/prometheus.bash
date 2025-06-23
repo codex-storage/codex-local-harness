@@ -6,7 +6,20 @@ LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 # shellcheck source=./src/utils.bash
 source "${LIB_SRC}/utils.bash"
 
-_prom_output=${PROM_TARGETS_DIR:-$(clh_output_folder "prometheus")}
+_prom_output=""
+
+prom_set_outputs() {
+  _prom_output="$1"
+}
+
+_prom_init_output() {
+  if [ -z "${_prom_output}" ]; then
+    echoerr "Error: outputs not set"
+    return 1
+  fi
+
+  mkdir -p "${_prom_output}"
+}
 
 prom_add() {
   local metrics_port="$1"\
@@ -15,7 +28,7 @@ prom_add() {
     node="$4"\
     node_type="$5"
 
-  mkdir -p "${_prom_output}"
+  _prom_init_output || return 1
 
   cat > "${_prom_output}/${metrics_port}-${experiment_type}-${experiment_id}-${node}-${node_type}.json" <<EOF
 {

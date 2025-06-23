@@ -1,11 +1,14 @@
 #!/usr/bin/env bats
-# shellcheck disable=SC2128
+# shellcheck disable=SC2128,SC2076
 setup() {
   load test_helper/common_setup
   common_setup
 
   # shellcheck source=./src/codex.bash
   source "${LIB_SRC}/codex.bash"
+
+  pm_set_outputs "${TEST_OUTPUTS}/pm"
+  cdx_set_outputs "${TEST_OUTPUTS}/codex"
 }
 
 @test "should generate the correct Codex command line for node 0" {
@@ -39,7 +42,7 @@ setup() {
 }
 
 @test "should allow setting of global default options" {
-  ! [[ "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
+  [[ ! "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
 
   cdx_add_defaultopts "--metrics"
 
@@ -47,7 +50,7 @@ setup() {
 
   cdx_clear_defaultopts
 
-  ! [[ "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
+  [[ ! "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
 }
 
 @test "should fail readiness check if node is not running" {
@@ -55,7 +58,7 @@ setup() {
 }
 
 @test "should pass readiness check if node is running" {
-  data_dir=$(clh_output_folder "codex-temp")
+  data_dir="${TEST_OUTPUTS}/codex-temp"
   "${_cdx_binary}" --nat:none --data-dir="$data_dir" &> /dev/null &
   pid=$!
 
@@ -209,5 +212,5 @@ setup() {
 }
 
 teardown() {
-  clh_destroy
+  clean_outputs
 }

@@ -13,22 +13,34 @@ source "${LIB_SRC}/prometheus.bash"
 _experiment_type=""
 _experiment_id=""
 
+exp_set_outputs() {
+  _exp_outputs="${1}"
+
+  mkdir -p "${_exp_outputs}" || return 1
+}
+
+_ensure_outputs_set() {
+  if [ -z "${_exp_outputs}" ]; then
+    echoerr "experiments output not set"
+    return 1
+  fi
+}
+
 exp_start() {
   local experiment_id experiment_type="$1"
 
-  experiment_id="$(date +%s)-${RANDOM}" || return 1
+  _ensure_outputs_set || return 1
 
-  # FIXME: this is pretty clumsy/confusing. We're "initing" the
-  #   harness just so it sets the base output folder, and then
-  #   "initing" it again.
-  if [ -z "${_clh_output}" ]; then
-    clh_init
-  fi
+  experiment_id="$(date +%s)-${RANDOM}" || return 1
 
   _experiment_id="${experiment_id}"
   _experiment_type="${experiment_type}"
+  _experiment_output="${_exp_outputs}/${experiment_type}-${experiment_id}"
 
-  clh_init "${_clh_output}/${_experiment_id}" || return 1
+  mkdir -p "${_experiment_output}" || return 1
+  pm_set_outputs "${_experiment_output}/pm"
+  cdx_set_outputs "${_experiment_output}/codex"
+
   cdx_add_defaultopts "--metrics"
 
   pm_register_callback "codex" _codex_target_changed

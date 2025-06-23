@@ -20,36 +20,44 @@ if [ ! -f "${_cdx_binary}" ]; then
   exit 1
 fi
 
-# Output folders
-_cdx_output=$(clh_output_folder "codex")
-# generated files
-_cdx_genfiles="${_cdx_output}/genfiles"
-# downloaded files, per node. File names are CIDs
-_cdx_downloads="${_cdx_output}/downloads"
-# SHA1 of uploaded files, per node. File names are CIDs
-_cdx_uploads="${_cdx_output}/uploads"
-# Codex node logs, per node
-_cdx_logs="${_cdx_output}/logs"
-# Codex data directories, per node
-_cdx_data="${_cdx_output}/data"
-
-# Partial timings, per operation per node
-_cdx_timing_partials="${_cdx_output}/timing"
 # Custom prefix for timing logs
 _cdx_timing_prefix=""
 # Log file where timings are aggregated
 _cdx_timing_log="/dev/null"
-
-_cdx_defaultopts=()
-
 # Base ports and timeouts
 _cdx_base_api_port=8080
 _cdx_base_disc_port=8190
 _cdx_base_metrics_port=8290
 _cdx_node_start_timeout=30
+# Default options set for Codex nodes
+_cdx_defaultopts=()
 
 # PID array for known Codex node processes
 declare -A _cdx_pids
+
+cdx_set_outputs() {
+  # Output folders
+  _cdx_output="$1"
+  # generated files
+  _cdx_genfiles="${_cdx_output}/genfiles"
+  # downloaded files, per node. File names are CIDs
+  _cdx_downloads="${_cdx_output}/downloads"
+  # SHA1 of uploaded files, per node. File names are CIDs
+  _cdx_uploads="${_cdx_output}/uploads"
+  # Codex node logs, per node
+  _cdx_logs="${_cdx_output}/logs"
+  # Codex data directories, per node
+  _cdx_data="${_cdx_output}/data"
+  # Partial timings, per operation per node
+  _cdx_timing_partials="${_cdx_output}/timing"
+}
+
+_ensure_outputs_set() {
+  if [ -z "${_cdx_output}" ]; then
+    echoerr "Error: outputs not set"
+    return 1
+  fi
+}
 
 _cdx_api_port() {
   local node_index="$1"
@@ -197,6 +205,8 @@ cdx_ensure_ready() {
 
 _cdx_init_node_outputs() {
   local node_index="$1"
+  _ensure_outputs_set || return 1
+
   mkdir -p "${_cdx_data}/codex-${node_index}" || return 1
   mkdir -p "${_cdx_downloads}/codex-${node_index}" || return 1
   mkdir -p "${_cdx_uploads}/codex-${node_index}" || return 1
@@ -206,6 +216,8 @@ _cdx_init_node_outputs() {
 #   being piggybacked on cdx_launch_node and cdx_log_timings_start
 #   so we don't have to add extra initialization calls.
 _cdx_init_global_outputs() {
+  _ensure_outputs_set || return 1
+
   mkdir -p "${_cdx_logs}" || return 1
   mkdir -p "${_cdx_genfiles}" || return 1
   mkdir -p "${_cdx_timing_partials}" || return 1

@@ -1,22 +1,29 @@
 #!/usr/bin/env bats
-# shellcheck disable=SC2128
+# shellcheck disable=SC2128,SC2076
 setup() {
   load test_helper/common_setup
   common_setup
 
   # shellcheck source=./src/experiment.bash
   source "${LIB_SRC}/experiment.bash"
+  exp_set_outputs "${TEST_OUTPUTS}"
+  prom_set_outputs "${TEST_OUTPUTS}/prometheus"
 }
 
 @test "should create experiment folder and set it as the global harness output" {
-  output_base="${_clh_output}"
-
   exp_start "experiment-type"
-  experiment_output="${output_base}/experiment-type-[0-9]+-[0-9]+"
 
-  [[ "${_clh_output}" =~ ${experiment_output} ]]
+  experiment_output="${TEST_OUTPUTS}/experiment-type-[0-9]+-[0-9]+"
+  found=false
 
-  assert [ -d "${_clh_output}" ]
+  for output in "${TEST_OUTPUTS}"/*; do
+    if [[ "$output" =~ ${experiment_output} ]]; then
+      found=true
+    fi
+  done
+
+  assert [ "$found" = true ]
+
 }
 
 @test "should launch Codex nodes with metrics enabled when there is an experiment in scope" {
@@ -39,5 +46,7 @@ setup() {
 }
 
 teardown() {
-  pm_stop
+  if pm_is_running; then
+    pm_stop
+  fi
 }

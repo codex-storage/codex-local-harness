@@ -3,10 +3,14 @@ common_setup() {
   load test_helper/bats-support/load
   load test_helper/bats-assert/load
 
-  export LIB_SRC="${BATS_TEST_DIRNAME}/../src"
+  LIB_SRC="$(realpath "${BATS_TEST_DIRNAME}/../src")"
+  TEST_OUTPUTS="$(realpath "${BATS_TEST_DIRNAME}/../test_outputs")"
+  export LIB_SRC TEST_OUTPUTS
 
   # shellcheck source=./src/utils.bash
   source "${LIB_SRC}/utils.bash"
+}
 
-  clh_init "${LIB_SRC}/../test_outputs"
+clean_outputs() {
+  rm -rf "${TEST_OUTPUTS}"
 }

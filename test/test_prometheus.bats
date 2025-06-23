@@ -1,9 +1,11 @@
+#!/usr/bin/env bats
 setup() {
   load test_helper/common_setup
   common_setup
 
   # shellcheck source=./src/prometheus.bash
   source "${LIB_SRC}/prometheus.bash"
+  prom_set_outputs "${TEST_OUTPUTS}/prometheus"
 }
 
 contains() {
