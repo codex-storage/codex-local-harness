@@ -5,7 +5,8 @@ common_setup() {
 
   export LIB_SRC="${BATS_TEST_DIRNAME}/../src"
 
-  # shellcheck source=./src/clh
-  source "${LIB_SRC}/clh"
+  # shellcheck source=./src/utils.bash
+  source "${LIB_SRC}/utils.bash"
+
   clh_init "${LIB_SRC}/../test_outputs"
 }

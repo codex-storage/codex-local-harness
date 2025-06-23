@@ -40,6 +40,8 @@ _cdx_timing_prefix=""
 # Log file where timings are aggregated
 _cdx_timing_log="/dev/null"
 
+_cdx_defaultopts=()
+
 # Base ports and timeouts
 _cdx_base_api_port=8080
 _cdx_base_disc_port=8190
@@ -64,28 +66,39 @@ _cdx_metrics_port() {
   echo $((_cdx_base_metrics_port + node_index))
 }
 
+cdx_add_defaultopts() {
+  _cdx_defaultopts+=("$@")
+}
+
+cdx_clear_defaultopts() {
+  _cdx_defaultopts=()
+}
+
 cdx_cmdline() {
-  local node_index spr cdx_cmd="${_cdx_binary} --nat:none"
+  local node_index spr cdx_cmd="${_cdx_binary} --nat:none" opts=("$@")
 
-  node_index="$1"
-  shift
+  opts+=("${_cdx_defaultopts[@]}")
 
-  while [[ "$#" -gt 0 ]]; do
-    case "$1" in
+  node_index="${opts[0]}"
+  shift_arr opts
+
+  while [[ "${#opts[@]}" -gt 0 ]]; do
+    opt="${opts[0]}"
+    case "$opt" in
       --bootstrap-node)
-        shift
-        spr="$1"
+        shift_arr opts
+        spr="${opts[0]}"
         cdx_cmd="${cdx_cmd} --bootstrap-node=$spr"
         ;;
       --metrics)
         cdx_cmd="${cdx_cmd} --metrics --metrics-port=$(_cdx_metrics_port "$node_index") --metrics-address=0.0.0.0"
         ;;
       *)
-        echoerr "Error: unknown option $1"
+        echoerr "Error: unknown option $opt"
         return 1
         ;;
     esac
-    shift
+    shift_arr opts
   done
 
   if [[ "$node_index" -gt 0 && -z "$spr" ]]; then

@@ -25,6 +25,11 @@ echoerr() {
   echo "$@" >&2
 }
 
+shift_arr () {
+  local -n arr_ref="$1"
+  arr_ref=("${arr_ref[@]:1}")
+}
+
 sha1() {
   sha1sum "$1" | cut -d ' ' -f 1 || return 1
 }

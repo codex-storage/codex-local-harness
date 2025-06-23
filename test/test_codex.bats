@@ -38,6 +38,18 @@ setup() {
 " --api-port=8080 --disc-port=8190 --log-level=INFO"
 }
 
+@test "should allow setting of global default options" {
+  ! [[ "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
+
+  cdx_add_defaultopts "--metrics"
+
+  [[ "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
+
+  cdx_clear_defaultopts
+
+  ! [[ "$(cdx_cmdline 0)" =~ "--metrics --metrics-port=8290 --metrics-address=0.0.0.0" ]]
+}
+
 @test "should fail readiness check if node is not running" {
   refute cdx_ensure_ready 0 1
 }
