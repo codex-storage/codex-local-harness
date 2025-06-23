@@ -31,15 +31,17 @@ prom_add() {
   _prom_init_output || return 1
 
   cat > "${_prom_output}/${metrics_port}-${experiment_type}-${experiment_id}-${node}-${node_type}.json" <<EOF
-{
-  "targets": ["host.docker.internal:${metrics_port}"],
-  "labels": {
-    "job": "${experiment_type}",
-    "experiment_id": "${experiment_id}",
-    "node": "${node}",
-    "node_type": "${node_type}"
+[
+  {
+    "targets": ["host.docker.internal:${metrics_port}"],
+    "labels": {
+      "job": "${experiment_type}",
+      "experiment_id": "${experiment_id}",
+      "node": "${node}",
+      "node_type": "${node_type}"
+    }
   }
-}
+]
 EOF
 }
 
