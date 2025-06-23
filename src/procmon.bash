@@ -202,6 +202,7 @@ pm_async() {
       -%-)
         shift
         proc_type="$1"
+        shift
         break
         ;;
       *)
@@ -213,7 +214,7 @@ pm_async() {
 
   (
     set +e
-    _pm_job_started "${BASHPID}" "$proc_type"
+    _pm_job_started "${BASHPID}" "$proc_type" "$@"
     trap '_pm_job_exited "${BASHPID}" "$proc_type" "killed"' TERM
     trap '_pm_job_exited "${BASHPID}" "$proc_type" "$?"' EXIT
     "${command[@]}"
@@ -243,11 +244,12 @@ await_all() {
 
 _pm_job_started() {
   local pid=$1 proc_type=$2
-  echoerr "[procmon] job started: $pid ($proc_type)"
+  shift 2
+  echoerr "[procmon] job started: $pid ($proc_type), args: $*"
   if [ ! -f "${_pm_output}/${pid}.pid" ]; then
     touch "${_pm_output}/${pid}.pid"
   fi
-  _pm_invoke_callback "start" "$proc_type" "$pid"
+  _pm_invoke_callback "start" "$proc_type" "$pid" "$@"
 }
 
 _pm_job_exited() {
@@ -272,11 +274,12 @@ pm_register_callback() {
 }
 
 _pm_invoke_callback() {
-  local event="$1" proc_type="$2" pid="$3" exit_code="$4"
+  local event="$1" proc_type="$2" pid="$3"
+  shift 3
   if [ -n "$proc_type" ]; then
     # calls the callback for this proc type
     if [ -n "${_pm_callbacks[$proc_type]}" ]; then
-      "${_pm_callbacks[$proc_type]}" "$event" "$proc_type" "$pid" "$exit_code"
+      "${_pm_callbacks[$proc_type]}" "$event" "$proc_type" "$pid" "$@"
     fi
   fi
 }

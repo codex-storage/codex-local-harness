@@ -161,6 +161,10 @@ callback() {
   local event="$1" proc_type="$2" pid="$3" exit_code
 
   if [ "$event" = "start" ]; then
+    shift 3
+    if [ "$#" -gt 0 ]; then
+      echo "$*" > "${_pm_output}/${pid}-${proc_type}-start-args"
+    fi
     touch "${_pm_output}/${pid}-${proc_type}-start"
   elif [ "$event" = "exit" ]; then
     exit_code="$4"
@@ -216,4 +220,15 @@ callback() {
   assert [ -f "${_pm_output}/${pid1}-sleepy-killed-exit" ]
   assert [ -f "${_pm_output}/${pid2}-sleepy-start" ]
   assert [ -f "${_pm_output}/${pid2}-sleepy-1-exit" ]
+}
+
+@test "should allow passing custom arguments to lifecycle callback" {
+  pm_register_callback "sleepy" "callback"
+
+  pm_async sleep 0.1 -%- "sleepy" "arg1" "arg2"
+  pid=$result
+
+  await "$pid"
+
+  assert_equal "$(cat "${_pm_output}/${pid}-sleepy-start-args")" "arg1 arg2"
 }
