@@ -196,21 +196,6 @@ setup() {
   done < "${_cdx_output}/experiment-0.csv"
 }
 
-# @test "should add a prometheus target for each Codex node when requested" {
-#   pm_start
-
-#   cdx_enable_prometheus "anexperiment" "84858"
-
-#   cdx_launch_node 0
-#   config_file="${_prom_output}/8290-anexperiment-84858-node-1-codex.json"
-#   assert [ -f "$config_file" ]
-
-#   cdx_destroy_node 0
-#   assert [ ! -f "$config_file" ]
-
-#   pm_stop
-# }
-
 teardown() {
-  clh_clear_outputs
+  clh_destroy
 }

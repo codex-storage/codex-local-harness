@@ -4,4 +4,8 @@ common_setup() {
   load test_helper/bats-assert/load
 
   export LIB_SRC="${BATS_TEST_DIRNAME}/../src"
+
+  # shellcheck source=./src/clh
+  source "${LIB_SRC}/clh"
+  clh_init "${LIB_SRC}/../test_outputs"
 }

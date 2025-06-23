@@ -9,8 +9,6 @@ set -o pipefail
 
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
-# shellcheck source=./src/config.bash
-source "${LIB_SRC}/config.bash"
 # shellcheck source=./src/utils.bash
 source "${LIB_SRC}/utils.bash"
 
@@ -221,6 +219,26 @@ pm_async() {
     "${command[@]}"
   ) &
   result=("$!")
+}
+
+await() {
+  local pid=$1 timeout=${2:-30} start="${SECONDS}"
+  while kill -0 "$pid" 2> /dev/null; do
+    if ((SECONDS - start > timeout)); then
+      echoerr "Error: timeout waiting for process $pid to exit"
+      return 1
+    fi
+    sleep 0.1
+  done
+  echoerr "Process $pid exited"
+  return 0
+}
+
+await_all() {
+  local pids=("$@") timeout=${2:-30}
+  for pid in "${pids[@]}"; do
+    await "$pid" "$timeout" || return 1
+  done
 }
 
 _pm_job_started() {

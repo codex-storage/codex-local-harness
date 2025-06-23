@@ -3,8 +3,6 @@ set -o pipefail
 
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
-# shellcheck source=./src/config.bash
-source "${LIB_SRC}/config.bash"
 # shellcheck source=./src/utils.bash
 source "${LIB_SRC}/utils.bash"
 
