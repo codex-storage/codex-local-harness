@@ -16,20 +16,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Test Image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        file: Dockerfile
-        push: false
-        load: true
-        tags: clh:test
+    - name: Get Codex
+      run: |
+        curl -s https://get.codex.storage/install.sh | bash
 
     - name: Lint
-      run: docker run -v --rm clh:test bash -c 'shellcheck -x ./src/* ./test/*.bats'
+      uses: ludeeus/action-shellcheck@master
+      with:
+        ignore_paths: >-
+          test/bats
+          test/test_helper
 
     - name: Run Tests
-      run: docker run -v --rm clh:test ./test/bats/bin/bats test/
+      run: ./test/bats/bin/bats test/

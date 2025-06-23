@@ -44,7 +44,7 @@ setup() {
 
 @test "should pass readiness check if node is running" {
   data_dir=$(clh_output_folder "codex-temp")
-  "${CODEX_BINARY}" --nat:none --data-dir="$data_dir" &> /dev/null &
+  "${_cdx_binary}" --nat:none --data-dir="$data_dir" &> /dev/null &
   pid=$!
 
   assert cdx_ensure_ready 0 3
