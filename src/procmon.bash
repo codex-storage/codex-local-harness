@@ -215,8 +215,8 @@ pm_async() {
   (
     set +e
     _pm_job_started "${BASHPID}" "$proc_type" "$@"
-    trap '_pm_job_exited "${BASHPID}" "$proc_type" "killed"' TERM
-    trap '_pm_job_exited "${BASHPID}" "$proc_type" "$?"' EXIT
+    trap '_pm_job_exited "${BASHPID}" "$proc_type" "killed" "$@"' TERM
+    trap '_pm_job_exited "${BASHPID}" "$proc_type" "$?" "$@"' EXIT
     "${command[@]}"
   ) &
   result=("$!")
@@ -257,6 +257,8 @@ _pm_job_exited() {
     proc_type=$2\
     exit_code=$3
 
+  shift 3
+
   local pid_file="${_pm_output}/${pid}.pid"
 
   # If the process is not tracked, don't write down an exit code.
@@ -265,7 +267,7 @@ _pm_job_exited() {
   else
     echo "$exit_code" > "$pid_file"
   fi
-  _pm_invoke_callback "exit" "$proc_type" "$pid" "$exit_code"
+  _pm_invoke_callback "exit" "$proc_type" "$pid" "$exit_code" "$@"
 }
 
 pm_register_callback() {

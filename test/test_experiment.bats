@@ -19,18 +19,25 @@ setup() {
   assert [ -d "${_clh_output}" ]
 }
 
-# @test "should add a prometheus target for each Codex node when requested" {
-#   pm_start
+@test "should launch Codex nodes with metrics enabled when there is an experiment in scope" {
+  exp_start "experiment-type"
 
-#   cdx_enable_prometheus "anexperiment" "84858"
+  [[ "$(cdx_cmdline 0)" =~ "--metrics-port=8290 --metrics-address=0.0.0.0" ]]
+}
 
-#   cdx_launch_node 0
-#   config_file="${_prom_output}/8290-anexperiment-84858-node-1-codex.json"
-#   assert [ -f "$config_file" ]
+@test "should add a prometheus target for each Codex node when there is an experiment in scope" {
+  exp_start "k-node"
 
-#   cdx_destroy_node 0
-#   assert [ ! -f "$config_file" ]
+  pm_start
+  cdx_launch_node 0
 
-#   pm_stop
-# }
+  config_file="${_prom_output}/8290-k-node-${_experiment_id}-0-codex.json"
+  assert [ -f "$config_file" ]
 
+  cdx_destroy_node 0
+  assert [ ! -f "$config_file" ]
+}
+
+teardown() {
+  pm_stop
+}

@@ -27,7 +27,8 @@ echoerr() {
 
 shift_arr () {
   local -n arr_ref="$1"
-  arr_ref=("${arr_ref[@]:1}")
+  local shifts="${2:-1}"
+  arr_ref=("${arr_ref[@]:shifts}")
 }
 
 sha1() {

@@ -136,7 +136,7 @@ cdx_launch_node() {
   cmd_array=()
   IFS=' ' read -r -a cmd_array <<<"$codex_cmd"
 
-  pm_async "${cmd_array[@]}" -%- "codex"
+  pm_async "${cmd_array[@]}" -%- "codex" "${node_index}"
   _cdx_pids[$node_index]=$!
 
   cdx_ensure_ready "$node_index"

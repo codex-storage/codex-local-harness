@@ -162,13 +162,15 @@ callback() {
 
   if [ "$event" = "start" ]; then
     shift 3
-    if [ "$#" -gt 0 ]; then
-      echo "$*" > "${_pm_output}/${pid}-${proc_type}-start-args"
-    fi
     touch "${_pm_output}/${pid}-${proc_type}-start"
   elif [ "$event" = "exit" ]; then
     exit_code="$4"
+    shift 4
     touch "${_pm_output}/${pid}-${proc_type}-${exit_code}-exit"
+  fi
+
+  if [ "$#" -gt 0 ]; then
+    echo "$*" > "${_pm_output}/${pid}-${proc_type}-${event}-args"
   fi
 }
 
@@ -231,4 +233,5 @@ callback() {
   await "$pid"
 
   assert_equal "$(cat "${_pm_output}/${pid}-sleepy-start-args")" "arg1 arg2"
+  assert_equal "$(cat "${_pm_output}/${pid}-sleepy-exit-args")" "arg1 arg2"
 }

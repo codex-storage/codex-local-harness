@@ -2,9 +2,5 @@
 
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
-# shellcheck source=./src/utils.bash
-source "${LIB_SRC}/utils.bash"
-# shellcheck source=./src/procmon.bash
-source "${LIB_SRC}/procmon.bash"
-# shellcheck source=./src/codex.bash
-source "${LIB_SRC}/codex.bash"
+# shellcheck source=./src/experiment.bash
+source "${LIB_SRC}/experiment.bash"
