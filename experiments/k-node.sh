@@ -11,7 +11,6 @@
 set -e -o pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-
 source "${SCRIPT_DIR}/../src/clh"
 
 node_count="${1:-2}"
@@ -22,8 +21,15 @@ file_sizes=("$@")
 
 exp_start "k-node"
 
+echoerr "* Nodes: ${node_count}"
+echoerr "* Repetitions: ${repetitions}"
+echoerr "* File Sizes: ${file_sizes[*]}"
+echoerr "* Timing log: ${output_log}"
+
 # TODO: procmon management should be moved into
 #  experiment lifecycle management.
+# TODO: we should register this process with procmon
+#  so its also killed if something fails.
 trap pm_stop EXIT INT TERM
 pm_start
 

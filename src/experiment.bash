@@ -44,6 +44,8 @@ exp_start() {
   cdx_add_defaultopts "--metrics"
 
   pm_register_callback "codex" _codex_target_changed
+
+  echoerr "[exp] Experiment ID is ${experiment_id}"
 }
 
 _codex_target_changed() {

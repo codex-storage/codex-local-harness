@@ -10,13 +10,14 @@ source "${LIB_SRC}/procmon.bash"
 
 # Codex binary
 if [ -z "${CODEX_BINARY}" ]; then
-  _cdx_binary="$(command -v codex)"
+  _cdx_binary="$(command -v codex)" || true
 else
   _cdx_binary="${CODEX_BINARY}"
 fi
 
 if [ ! -f "${_cdx_binary}" ]; then
-  echoerr "Error: no valid Codex binary found"
+  echoerr "Error: no valid Codex binary found."\
+ "Set CODEX_BINARY to point to a valid Codex binary."
   exit 1
 fi
 
@@ -188,8 +189,9 @@ cdx_destroy_node() {
 
 cdx_ensure_ready() {
   local node_index="$1" timeout=${2:-$_cdx_node_start_timeout} start="${SECONDS}"
+  echoerr "Waiting ${timeout} seconds for node ${node_index} to be ready."
   while true; do
-    if cdx_get_spr "$node_index"; then
+    if cdx_get_spr "$node_index" 2> /dev/null; then
       echoerr "Codex node $node_index is ready."
       return 0
     fi
@@ -264,7 +266,7 @@ cdx_download_file() {
 }
 
 cdx_download_file_async() {
-  pm_async cdx_download_file "$@"
+  pm_async cdx_download_file "$@" -%- "download"
 }
 
 cdx_upload_sha1() {

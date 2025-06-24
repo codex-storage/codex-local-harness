@@ -3,9 +3,9 @@ apiVersion: 1
 providers:
   - name: 'default'
     orgId: 1
-    folder: ''
+    folder: 'Codex'
     type: file
-    disableDeletion: false
+    disableDeletion: true
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
