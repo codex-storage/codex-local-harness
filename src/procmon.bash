@@ -43,7 +43,7 @@ pm_start() {
   export _pm_output
   (
     _pm_pid=${BASHPID}
-    echoerr "[procmon] started with PID $_pm_pid"
+    echoerr "[procmon] enter monitoring loop"
     while true; do
       pm_known_pids
       for pid in "${result[@]}"; do
