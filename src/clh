@@ -14,4 +14,7 @@ source "${LIB_SRC}/experiment.bash"
 exp_set_outputs "${OUTPUTS}"
 prom_set_outputs "${PROM_TARGETS_DIR}"
 
-exp_start "default"
+# If running from an interactive shell, fire the default experiment.
+if [[ $- =~ i ]]; then
+  exp_start "default"
+fi

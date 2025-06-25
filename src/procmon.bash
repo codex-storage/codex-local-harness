@@ -259,7 +259,7 @@ await_all() {
 _pm_job_started() {
   local pid=$1 proc_type=$2
   shift 2
-  echoerr "[procmon] job started: $pid ($proc_type), args: $*"
+  echoerr "[procmon] job started: $pid ($proc_type), args: ${*:-<no args>}"
   if [ ! -f "${_pm_output}/${pid}.pid" ]; then
     touch "${_pm_output}/${pid}.pid"
   fi

@@ -11,13 +11,20 @@
 set -e -o pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# shellcheck source=./src/clh
 source "${SCRIPT_DIR}/../src/clh"
 
 node_count="${1:-2}"
 repetitions="${2:-1}"
 output_log="${3:-"${OUTPUTS}/k-node-$(date +%s)-${RANDOM}.csv"}"
-shift 3
-file_sizes=("$@")
+if [ "$#" -gt 3 ]; then
+  shift 3
+  file_sizes=("$@")
+else
+  echoerr "No file sizes specified, using default (100)."
+  file_sizes=("100")
+fi
 
 exp_start "k-node"
 
