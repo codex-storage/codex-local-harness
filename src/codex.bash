@@ -117,8 +117,8 @@ cdx_cmdline() {
 
   # shellcheck disable=SC2140
   echo "${cdx_cmd}"\
-" --log-file=${_cdx_logs}/codex-${node_index}.log --data-dir=${_cdx_data}/codex-${node_index}"\
-" --api-port=$(_cdx_api_port "$node_index") --disc-port=$(_cdx_disc_port "$node_index") --log-level=INFO"
+ "--data-dir=${_cdx_data}/codex-${node_index} --api-port=$(_cdx_api_port "$node_index")"\
+ "--disc-port=$(_cdx_disc_port "$node_index") --log-level=INFO"
 }
 
 cdx_get_spr() {
@@ -145,7 +145,7 @@ cdx_launch_node() {
   cmd_array=()
   IFS=' ' read -r -a cmd_array <<<"$codex_cmd"
 
-  pm_async "bash" "-c" "exec ${cmd_array[*]} &> /dev/null" -%- "codex" "${node_index}"
+  pm_async "bash" "-c" "exec ${cmd_array[*]} &> ${_cdx_logs}/codex-${node_index}.log" -%- "codex" "${node_index}"
   _cdx_pids[$node_index]=$!
 
   cdx_ensure_ready "$node_index"

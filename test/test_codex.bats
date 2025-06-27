@@ -14,7 +14,6 @@ setup() {
 @test "should generate the correct Codex command line for node 0" {
   # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0)" "${_cdx_binary} --nat:none"\
-" --log-file=${_cdx_output}/logs/codex-0.log"\
 " --data-dir=${_cdx_output}/data/codex-0"\
 " --api-port=8080 --disc-port=8190 --log-level=INFO"
 }
@@ -22,7 +21,7 @@ setup() {
 @test "should generate the correct Codex command line for node 1" {
   # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 1 '--bootstrap-node' 'node-spr')" "${_cdx_binary} --nat:none"\
-" --bootstrap-node=node-spr --log-file=${_cdx_output}/logs/codex-1.log"\
+" --bootstrap-node=node-spr"\
 " --data-dir=${_cdx_output}/data/codex-1"\
 " --api-port=8081 --disc-port=8191 --log-level=INFO"
 }
@@ -36,7 +35,6 @@ setup() {
   # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0 --metrics)" "${_cdx_binary} --nat:none"\
 " --metrics --metrics-port=8290 --metrics-address=0.0.0.0"\
-" --log-file=${_cdx_output}/logs/codex-0.log"\
 " --data-dir=${_cdx_output}/data/codex-0"\
 " --api-port=8080 --disc-port=8190 --log-level=INFO"
 }

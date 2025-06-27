@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 LIB_SRC=${LIB_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
 
 PROM_TARGETS_DIR=${PROM_TARGETS_DIR:-"${LIB_SRC}/../dashboard/targets/"}
