@@ -21,6 +21,8 @@ if [ ! -f "${_cdx_binary}" ]; then
   exit 1
 fi
 
+echoerr "[codex] Using binary at ${_cdx_binary}"
+
 # Custom prefix for timing logs
 _cdx_timing_prefix=""
 # Log file where timings are aggregated
@@ -32,6 +34,10 @@ _cdx_base_metrics_port=8290
 _cdx_node_start_timeout=30
 # Default options set for Codex nodes
 _cdx_defaultopts=()
+# Log level for Codex nodes.
+_cdx_log_level="INFO"
+
+echoerr "[codex] Node log level is ${_cdx_log_level}"
 
 # PID array for known Codex node processes
 declare -A _cdx_pids
@@ -83,6 +89,10 @@ cdx_clear_defaultopts() {
   _cdx_defaultopts=()
 }
 
+cdx_set_log_level() {
+  _cdx_log_level="$1"
+}
+
 cdx_cmdline() {
   local node_index spr cdx_cmd="${_cdx_binary} --nat:none" opts=("$@")
 
@@ -118,7 +128,7 @@ cdx_cmdline() {
   # shellcheck disable=SC2140
   echo "${cdx_cmd}"\
  "--data-dir=${_cdx_data}/codex-${node_index} --api-port=$(_cdx_api_port "$node_index")"\
- "--disc-port=$(_cdx_disc_port "$node_index") --log-level=INFO"
+ "--disc-port=$(_cdx_disc_port "$node_index") --log-level=${_cdx_log_level}"
 }
 
 cdx_get_spr() {
