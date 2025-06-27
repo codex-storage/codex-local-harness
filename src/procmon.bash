@@ -209,6 +209,8 @@ pm_list_descendants() {
 }
 
 pm_async() {
+  _pm_assert_state "running" || return 1
+
   proc_type=""
   command=()
   while [[ "$#" -gt 0 ]]; do
@@ -227,7 +229,7 @@ pm_async() {
   done
 
   (
-    set +e
+    set -e
     _pm_job_started "${BASHPID}" "$proc_type" "$@"
     trap '_pm_job_exited "${BASHPID}" "$proc_type" "killed" "$@"' TERM
     trap '_pm_job_exited "${BASHPID}" "$proc_type" "$?" "$@"' EXIT
@@ -239,7 +241,7 @@ pm_async() {
 await() {
   local pid=$1 timeout=${2:-30} start="${SECONDS}"
   while kill -0 "$pid" 2> /dev/null; do
-    if ((SECONDS - start > timeout)); then
+    if [ "$timeout" != 'Inf' ] && ((SECONDS - start > timeout)); then
       echoerr "Error: timeout waiting for process $pid to exit"
       return 1
     fi

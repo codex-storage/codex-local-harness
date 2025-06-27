@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# shellcheck disable=SC2128
+# shellcheck disable=SC2128,SC2317
 setup() {
   load test_helper/common_setup
   common_setup
@@ -8,6 +8,34 @@ setup() {
   source "${LIB_SRC}/procmon.bash"
 
   pm_set_outputs "${TEST_OUTPUTS}/pm"
+}
+
+@test "should allow awaiting for a process" {
+  job() {
+    sleep 0.1
+  }
+
+  pm_start
+
+  pm_async job
+  pid=$result
+
+  assert await "$pid"
+  pm_stop
+}
+
+@test "should allow awaiting for a process up until a timeout" {
+  job() {
+    sleep 5000
+  }
+
+  pm_start
+
+  pm_async job
+  pid=$result
+
+  refute await "$pid" 1
+  pm_stop
 }
 
 @test "should kill processes recursively" {
@@ -230,6 +258,8 @@ callback() {
 @test "should allow passing custom arguments to lifecycle callback" {
   pm_register_callback "sleepy" "callback"
 
+  pm_start
+
   pm_async sleep 0.1 -%- "sleepy" "arg1" "arg2"
   pid=$result
 
@@ -237,4 +267,6 @@ callback() {
 
   assert_equal "$(cat "${_pm_output}/${pid}-sleepy-start-args")" "arg1 arg2"
   assert_equal "$(cat "${_pm_output}/${pid}-sleepy-exit-args")" "arg1 arg2"
+
+  pm_stop
 }

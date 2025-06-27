@@ -56,7 +56,7 @@ for i in $(seq 1 "${repetitions}"); do
       handles+=("$result")
     done
 
-    await_all "${handles[@]}"
+    await_all "${handles[@]}" "Inf"
 
     cdx_log_timings_end
   done

@@ -23,7 +23,6 @@ setup() {
   done
 
   assert [ "$found" = true ]
-
 }
 
 @test "should launch Codex nodes with metrics enabled when there is an experiment in scope" {
