@@ -42,6 +42,7 @@ setup() {
 @test "should modify the Codex log-level when specified" {
   cdx_set_log_level "DEBUG"
 
+  # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0)" "${_cdx_binary} --nat:none"\
 " --data-dir=${_cdx_output}/data/codex-0"\
 " --api-port=8080 --disc-port=8190 --log-level=DEBUG"
