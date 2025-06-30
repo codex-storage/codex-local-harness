@@ -40,17 +40,18 @@ echoerr "* Timing log: ${output_log}"
 trap pm_stop EXIT INT TERM
 pm_start
 
+#cdx_set_log_level "INFO;trace:blockexcnetwork,blockexcengine,discoveryengine"
 cdx_launch_network "${node_count}"
 
-for i in $(seq 1 "${repetitions}"); do
-  for file_size in "${file_sizes[@]}"; do
+for file_size in "${file_sizes[@]}"; do
+  for i in $(seq 1 "${repetitions}"); do
     file_name=$(cdx_generate_file "${file_size}")
     cid=$(cdx_upload_file "0" "${file_name}")
 
     cdx_log_timings_start "${output_log}" "${file_size},${i},${cid}"
 
     handles=()
-    for j in $(seq 1 "${node_count}"); do
+    for j in $(seq 1 "$((node_count - 1))"); do
       cdx_download_file_async "$j" "$cid"
       # shellcheck disable=SC2128
       handles+=("$result")

@@ -149,6 +149,10 @@ setup() {
   pm_stop
 }
 
+@test "should refuse to launch a Codex network with less than 2 nodes" {
+  refute cdx_launch_network 1
+}
+
 @test "should launch a Codex network and allow uploading and downloading" {
   pm_start
 

@@ -40,6 +40,8 @@ _cdx_log_level="INFO"
 echoerr "[codex] Node log level is ${_cdx_log_level}"
 
 # PID array for known Codex node processes
+# FIXME: right now only processes destroyed with cdx_destroy_node are removed from
+#   this array.
 declare -A _cdx_pids
 
 cdx_set_outputs() {
@@ -128,7 +130,7 @@ cdx_cmdline() {
   # shellcheck disable=SC2140
   echo "${cdx_cmd}"\
  "--data-dir=${_cdx_data}/codex-${node_index} --api-port=$(_cdx_api_port "$node_index")"\
- "--disc-port=$(_cdx_disc_port "$node_index") --log-level=${_cdx_log_level}"
+ "--disc-port=$(_cdx_disc_port "$node_index") '--log-level=${_cdx_log_level}'"
 }
 
 cdx_get_spr() {
@@ -163,9 +165,14 @@ cdx_launch_node() {
 
 cdx_launch_network() {
   local node_count="$1" bootstrap_spr
+  if [[ "$node_count" -lt 2 ]]; then
+    echoerr "Error: a Codex network needs at least 2 nodes"
+    return 1
+  fi
+
   cdx_launch_node 0 || return 1
   bootstrap_spr=$(cdx_get_spr 0) || return 1
-  for i in $(seq 1 "$node_count"); do
+  for i in $(seq 1 "$((node_count - 1))"); do
     cdx_launch_node "$i" "--bootstrap-node" "$bootstrap_spr" || return 1
   done
   return 0
