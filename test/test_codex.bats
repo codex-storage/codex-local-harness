@@ -15,7 +15,7 @@ setup() {
   # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0)" "${_cdx_binary} --nat:none"\
 " --data-dir=${_cdx_output}/data/codex-0"\
-" --api-port=8080 --disc-port=8190 --log-level=INFO"
+" --api-port=8080 --disc-port=8190 '--log-level=INFO'"
 }
 
 @test "should generate the correct Codex command line for node 1" {
@@ -23,7 +23,7 @@ setup() {
   assert_equal "$(cdx_cmdline 1 '--bootstrap-node' 'node-spr')" "${_cdx_binary} --nat:none"\
 " --bootstrap-node=node-spr"\
 " --data-dir=${_cdx_output}/data/codex-1"\
-" --api-port=8081 --disc-port=8191 --log-level=INFO"
+" --api-port=8081 --disc-port=8191 '--log-level=INFO'"
 }
 
 @test "should refuse to generate the command line for node > 0 if no SPR is provided" {
@@ -36,7 +36,7 @@ setup() {
   assert_equal "$(cdx_cmdline 0 --metrics)" "${_cdx_binary} --nat:none"\
 " --metrics --metrics-port=8290 --metrics-address=0.0.0.0"\
 " --data-dir=${_cdx_output}/data/codex-0"\
-" --api-port=8080 --disc-port=8190 --log-level=INFO"
+" --api-port=8080 --disc-port=8190 '--log-level=INFO'"
 }
 
 @test "should modify the Codex log-level when specified" {
@@ -45,7 +45,7 @@ setup() {
   # shellcheck disable=SC2140
   assert_equal "$(cdx_cmdline 0)" "${_cdx_binary} --nat:none"\
 " --data-dir=${_cdx_output}/data/codex-0"\
-" --api-port=8080 --disc-port=8190 --log-level=DEBUG"
+" --api-port=8080 --disc-port=8190 '--log-level=DEBUG'"
 }
 
 @test "should allow setting of global default options" {
